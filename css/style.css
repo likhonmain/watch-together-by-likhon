@@ -204,7 +204,7 @@ body {
 }
 
 /* --------------------------------------------------------------------------
-   Main Workspace / Layout
+   Main Workspace / Layout (Cinema Player on Left, Controls & Chat on Right)
    -------------------------------------------------------------------------- */
 .main-container {
   flex: 1;
@@ -212,162 +212,205 @@ body {
   flex-direction: row;
   position: relative;
   overflow: hidden;
-  height: calc(100vh - 60px);
+  height: calc(100vh - 50px);
+  padding: 0.75rem 1rem;
+  gap: 1rem;
+  background: var(--bg-primary);
 }
 
 .player-section {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  background: #000;
+  background: transparent;
   position: relative;
+  overflow: hidden;
+  gap: 0.6rem;
+  height: 100%;
+}
+
+.video-wrapper {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  background: #000;
+  border-radius: var(--radius-md);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+}
+
+/* Idle Cinema Backdrop */
+.video-idle-backdrop {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at center, #151829 0%, #07080e 100%);
+  z-index: 5;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.video-idle-backdrop.hidden {
+  display: none !important;
+}
+
+.idle-watermark {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.5rem;
+}
+
+.idle-watermark svg {
+  color: var(--accent-primary);
+  opacity: 0.75;
+}
+
+.idle-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.idle-sub {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+/* Desktop Video Bottom Bar */
+.desktop-video-bar {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.65rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-shrink: 0;
+}
+
+.dv-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dv-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dv-status-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.dv-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+/* Desktop Sidebar */
+.desktop-sidebar {
+  width: 340px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  height: 100%;
   overflow: hidden;
 }
 
-/* Setup Overlay (When no video is loaded or room not joined) */
-.setup-overlay {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at center, #171a28 0%, #0a0b10 100%);
+.sidebar-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.85rem;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  z-index: 30;
-  padding: 1.5rem;
-  overflow-y: auto;
-  transition: opacity 0.3s ease, visibility 0.3s ease;
+  gap: 0.5rem;
 }
 
-.setup-overlay.hidden {
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-}
-
-.setup-card {
-  width: 100%;
-  max-width: 540px;
-  background: var(--bg-surface-glass);
-  backdrop-filter: blur(20px);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  padding: 2rem;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(99, 102, 241, 0.1);
-}
-
-.setup-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin-bottom: 0.5rem;
-  background: var(--accent-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  text-align: center;
-}
-
-.setup-subtitle {
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-  text-align: center;
-  margin-bottom: 1.75rem;
-  line-height: 1.4;
-}
-
-/* Step Boxes */
-.setup-step {
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 1.25rem;
-  margin-bottom: 1.25rem;
-}
-
-.setup-step-header {
+.sidebar-card-header {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  margin-bottom: 0.85rem;
-  font-size: 0.95rem;
-  font-weight: 600;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  font-weight: 700;
   color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.4rem;
 }
 
-.step-number {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--accent-primary);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.75rem;
-  font-weight: 700;
-}
-
-/* Tab Switcher */
-.tab-group {
-  display: flex;
-  background: var(--bg-primary);
-  border-radius: var(--radius-md);
-  padding: 3px;
-  gap: 3px;
-  margin-bottom: 1rem;
-}
-
-.tab-btn {
-  flex: 1;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.8rem;
+.badge-relay {
+  font-size: 0.65rem;
   font-weight: 600;
-  background: transparent;
-  color: var(--text-muted);
-  border: none;
+  color: var(--accent-success);
+  background: rgba(16, 185, 129, 0.12);
+  padding: 2px 6px;
   border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: var(--transition-fast);
 }
 
-.tab-btn.active {
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-}
-
-/* File Drop Zone */
-.dropzone {
-  border: 2px dashed rgba(255, 255, 255, 0.15);
-  border-radius: var(--radius-md);
-  padding: 1.5rem;
+.sidebar-room-badge {
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 0.6rem;
   text-align: center;
-  cursor: pointer;
-  transition: all var(--transition-normal);
-  background: rgba(255, 255, 255, 0.02);
 }
 
-.dropzone:hover, .dropzone.dragover {
-  border-color: var(--accent-secondary);
-  background: rgba(6, 182, 212, 0.05);
-}
-
-.dropzone svg {
-  width: 36px;
-  height: 36px;
+.room-code-display {
+  font-family: monospace;
+  font-size: 1.25rem;
+  font-weight: 700;
   color: var(--accent-secondary);
-  margin-bottom: 0.5rem;
+  letter-spacing: 0.05em;
 }
 
-.dropzone p {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-}
-
-.dropzone span {
+.room-status-desc {
   font-size: 0.75rem;
-  color: var(--text-muted);
-  display: block;
-  margin-top: 0.25rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.sidebar-btn-row {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.sidebar-chat-card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.desktop-chat-stream {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  min-height: 120px;
 }
 
 /* Input Fields */
@@ -382,7 +425,7 @@ body {
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  padding: 0.6rem 0.85rem;
+  padding: 0.55rem 0.8rem;
   color: var(--text-primary);
   font-size: 0.85rem;
   outline: none;
@@ -392,6 +435,11 @@ body {
 .text-input:focus {
   border-color: var(--accent-primary);
   box-shadow: 0 0 10px rgba(99, 102, 241, 0.2);
+}
+
+.text-input-sm {
+  padding: 0.4rem 0.65rem;
+  font-size: 0.8rem;
 }
 
 /* Loaded File Badge */
@@ -1021,7 +1069,13 @@ video#main-video {
     font-size: 0.72rem;
   }
 
-  /* Hide the double top strip on mobile — integrated cleanly into panel */
+  /* Hide desktop-only layout parts on mobile */
+  .desktop-sidebar {
+    display: none !important;
+  }
+  .desktop-video-bar {
+    display: none !important;
+  }
   .room-strip {
     display: none !important;
   }
@@ -1029,8 +1083,10 @@ video#main-video {
   /* Main Workspace */
   .main-container {
     height: calc(100vh - 48px);
+    padding: 0;
     flex-direction: column;
     overflow: hidden;
+    gap: 0;
   }
 
   .player-section {
@@ -1632,4 +1688,43 @@ video#main-video {
   font-size: 0.82rem;
   color: var(--text-secondary);
   max-width: 320px;
+}
+
+/* --------------------------------------------------------------------------
+   Cinema Fullscreen Overrides (Clean View for PC & Mobile)
+   -------------------------------------------------------------------------- */
+:fullscreen .desktop-sidebar,
+:-webkit-full-screen .desktop-sidebar,
+:fullscreen .desktop-video-bar,
+:-webkit-full-screen .desktop-video-bar,
+:fullscreen .mobile-portrait-panel,
+:-webkit-full-screen .mobile-portrait-panel,
+:fullscreen .app-header,
+:-webkit-full-screen .app-header {
+  display: none !important;
+}
+
+:fullscreen .main-container,
+:-webkit-full-screen .main-container {
+  padding: 0 !important;
+  margin: 0 !important;
+  height: 100vh !important;
+  width: 100vw !important;
+}
+
+:fullscreen .player-section,
+:-webkit-full-screen .player-section {
+  padding: 0 !important;
+  margin: 0 !important;
+  height: 100vh !important;
+  width: 100vw !important;
+}
+
+:fullscreen .video-wrapper,
+:-webkit-full-screen .video-wrapper {
+  width: 100vw !important;
+  height: 100vh !important;
+  max-height: 100vh !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
 }

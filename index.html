@@ -8,8 +8,8 @@
   <title>Watch Together by Likhon</title>
   
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='25' fill='%236366f1'/><polygon points='38,28 72,50 38,72' fill='white'/></svg>">
-  <link rel="manifest" href="manifest.json?v=3.1">
-  <link rel="stylesheet" href="css/style.css?v=3.1">
+  <link rel="manifest" href="manifest.json?v=3.2">
+  <link rel="stylesheet" href="css/style.css?v=3.2">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -103,20 +103,22 @@
         <!-- Main HTML5 Video Element -->
         <video id="main-video" playsinline></video>
 
-        <!-- Empty Player Prompt (When no movie loaded) -->
-        <div class="empty-player-prompt" id="empty-player-prompt">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="17 8 12 3 7 8"/>
-            <line x1="12" y1="3" x2="12" y2="15"/>
-          </svg>
-          <h3>No Movie Loaded</h3>
-          <p>Tap below to select your downloaded movie file from your phone or PC</p>
-          <button class="btn btn-primary" id="btn-prompt-pick" style="padding: 0.65rem 1.3rem; font-size: 0.9rem; font-weight: 700;">
-            📁 Choose Movie File
-          </button>
-          <input type="file" id="file-input" accept="video/*,.mkv,.mp4,.webm" style="display: none;">
-          <input type="file" id="sub-file-input" accept=".srt,.vtt" style="display: none;">
+        <!-- Clean Cinema Idle Backdrop (When no movie loaded) -->
+        <div class="video-idle-backdrop" id="video-idle-backdrop">
+          <div class="idle-watermark">
+            <svg viewBox="0 0 24 24" width="56" height="56" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>
+              <line x1="7" y1="2" x2="7" y2="22"/>
+              <line x1="17" y1="2" x2="17" y2="22"/>
+              <line x1="2" y1="12" x2="22" y2="12"/>
+              <line x1="2" y1="7" x2="7" y2="7"/>
+              <line x1="2" y1="17" x2="7" y2="17"/>
+              <line x1="17" y1="17" x2="22" y2="17"/>
+              <line x1="17" y1="7" x2="22" y2="7"/>
+            </svg>
+            <div class="idle-title">Watch Together</div>
+            <div class="idle-sub">by Likhon • Synced Local Video</div>
+          </div>
         </div>
 
         <!-- Big Center "Ready to Play" Card -->
@@ -295,8 +297,22 @@
                   <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
                 </svg>
               </button>
-            </div>
+        </div>
+      </div>
+
+      <!-- Video Bottom Info Bar (Desktop) -->
+      <div class="desktop-video-bar" id="desktop-video-bar">
+        <div class="dv-info">
+          <div class="dv-title" id="dv-title">No Movie Selected</div>
+          <div class="dv-status-line">
+            <span class="status-dot" id="dv-status-dot"></span>
+            <span id="dv-status-text">Disconnected</span>
+            <span id="dv-ping" style="font-size: 0.75rem; color: var(--text-muted); margin-left: 6px;"></span>
           </div>
+        </div>
+        <div class="dv-actions">
+          <button class="btn btn-sm btn-primary" id="dv-btn-pick">📁 Select Movie File</button>
+          <button class="btn btn-sm" id="dv-btn-copy-link">📋 Copy Invite Link</button>
         </div>
       </div>
 
@@ -455,45 +471,84 @@
     </div>
 
     <!-- ==================================================================
-         Side Drawer: Live Text Chat
+         Desktop Sidebar (Visible Beside Player on PC Screens)
          ================================================================== -->
-    <aside class="chat-drawer closed" id="chat-drawer">
-      <div class="chat-header">
-        <span>Room Chat</span>
-        <button class="btn btn-icon-only" id="chat-close-btn">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="18" y1="6" x2="6" y2="18"/>
-            <line x1="6" y1="6" x2="18" y2="18"/>
-          </svg>
-        </button>
-      </div>
-      <div class="chat-messages" id="chat-messages">
-        <div class="chat-bubble peer">
-          <div class="chat-sender">System</div>
-          <div class="chat-text">Welcome to Watch Together by Likhon! Messages sent here sync peer-to-peer with your friend.</div>
-          <div class="chat-time">Now</div>
+    <aside class="desktop-sidebar" id="desktop-sidebar">
+      <!-- Card 1: Room & Friends -->
+      <div class="sidebar-card">
+        <div class="sidebar-card-header">
+          <span>Room Connection</span>
+          <span class="badge-relay">Metered TURN</span>
+        </div>
+        <div class="sidebar-room-badge">
+          <div class="room-code-display" id="desktop-room-code">Not in Room</div>
+          <div class="room-status-desc" id="desktop-room-status">Create or join a room to sync</div>
+        </div>
+        <div class="sidebar-btn-row">
+          <button class="btn btn-gradient btn-sm" id="desktop-btn-create" style="flex: 1; font-weight: 700; min-height: 38px;">➕ Create Room</button>
+          <button class="btn btn-sm" id="desktop-btn-copy" title="Copy Invite Link" style="min-height: 38px;">📋 Copy Link</button>
+        </div>
+        <div class="sidebar-join-box" style="display: flex; gap: 0.35rem; margin-top: 0.5rem;">
+          <input type="text" class="text-input text-input-sm" id="desktop-join-input" placeholder="Enter Room Code..." style="flex: 1; font-size: 0.8rem;">
+          <button class="btn btn-primary btn-sm" id="desktop-join-btn" style="font-weight: 700; padding: 0.4rem 0.85rem;">Join</button>
         </div>
       </div>
-      <div class="chat-input-row">
-        <input type="text" class="text-input" id="chat-input" placeholder="Type a message..." autocomplete="off">
-        <button class="btn btn-primary" id="chat-send-btn">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="22" y1="2" x2="11" y2="13"/>
-            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-          </svg>
+
+      <!-- Card 2: Movie File & Subtitles -->
+      <div class="sidebar-card">
+        <div class="sidebar-card-header">
+          <span>Movie & Subtitles</span>
+        </div>
+        <button class="btn btn-primary" id="desktop-pick-file-btn" style="width: 100%; margin-bottom: 0.6rem; font-weight: 700; padding: 0.65rem;">
+          📁 Select Movie File
         </button>
+        <div style="display: flex; gap: 0.4rem; margin-bottom: 0.6rem;">
+          <button class="btn btn-sm" id="desktop-sub-toggle" style="flex: 1;">Subtitles: ON</button>
+          <label class="btn btn-sm" style="flex: 1; text-align: center; cursor: pointer;">
+            Load .SRT
+            <input type="file" id="desktop-sub-file-input" accept=".srt,.vtt" style="display: none;">
+          </label>
+        </div>
+        <div class="sidebar-sub-sync" style="display: flex; align-items: center; justify-content: space-between; font-size: 0.75rem;">
+          <span style="color: var(--text-secondary);">Sync Delay:</span>
+          <button class="btn btn-sm" id="desktop-sub-minus">-250ms</button>
+          <span id="desktop-sub-offset" style="font-family: monospace; font-weight: 700; color: var(--accent-secondary); font-size: 0.8rem;">0ms</span>
+          <button class="btn btn-sm" id="desktop-sub-plus">+250ms</button>
+          <button class="btn btn-sm" id="desktop-sub-reset">Reset</button>
+        </div>
+      </div>
+
+      <!-- Card 3: Live Room Chat -->
+      <div class="sidebar-card sidebar-chat-card">
+        <div class="sidebar-card-header">
+          <span>Live Room Chat</span>
+        </div>
+        <div class="desktop-chat-stream" id="desktop-chat-stream">
+          <div class="chat-bubble peer">
+            <div class="chat-sender">System</div>
+            <div class="chat-text">Welcome to Watch Together! Chat here with your friend while watching.</div>
+          </div>
+        </div>
+        <div class="sidebar-chat-input-row" style="display: flex; gap: 0.4rem; margin-top: 0.5rem;">
+          <input type="text" class="text-input text-input-sm" id="desktop-chat-input" placeholder="Type a message..." autocomplete="off" style="flex: 1;">
+          <button class="btn btn-primary btn-sm" id="desktop-chat-send" style="padding: 0.4rem 0.85rem;">Send</button>
+        </div>
       </div>
     </aside>
+
+    <!-- Master Hidden File Inputs -->
+    <input type="file" id="file-input" accept="video/*,.mkv,.mp4,.webm" style="display: none;">
+    <input type="file" id="sub-file-input" accept=".srt,.vtt" style="display: none;">
   </main>
 
   <!-- Scripts (Cache Busted) -->
-  <script src="js/peerjs.min.js?v=3.1"></script>
-  <script src="js/srt-parser.js?v=3.1"></script>
-  <script src="js/sync.js?v=3.1"></script>
-  <script src="js/voice.js?v=3.1"></script>
-  <script src="js/chat.js?v=3.1"></script>
-  <script src="js/player.js?v=3.1"></script>
-  <script src="js/app.js?v=3.1"></script>
+  <script src="js/peerjs.min.js?v=3.2"></script>
+  <script src="js/srt-parser.js?v=3.2"></script>
+  <script src="js/sync.js?v=3.2"></script>
+  <script src="js/voice.js?v=3.2"></script>
+  <script src="js/chat.js?v=3.2"></script>
+  <script src="js/player.js?v=3.2"></script>
+  <script src="js/app.js?v=3.2"></script>
 
   <!-- PWA Service Worker Registration -->
   <script>

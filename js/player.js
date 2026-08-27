@@ -104,6 +104,12 @@ class VideoPlayer {
       });
     }
 
+    // Make sure controls are initially hidden until a video is loaded
+    if (!this.hasMediaLoaded) {
+      if (this.controlsOverlay) this.controlsOverlay.classList.add('hidden');
+      if (this.mccContainer) this.mccContainer.classList.add('hidden');
+    }
+
     // Start subtitle rendering loop
     this._startSubtitleLoop();
   }
@@ -125,6 +131,8 @@ class VideoPlayer {
 
     // Hide empty prompt & show center play button
     if (this.emptyPlayerPrompt) this.emptyPlayerPrompt.style.display = 'none';
+    if (this.controlsOverlay) this.controlsOverlay.classList.remove('hidden');
+    if (this.mccContainer) this.mccContainer.classList.remove('hidden');
     this._showCenterPlayCard(file.name);
 
     this.video.onloadedmetadata = () => {
@@ -155,6 +163,8 @@ class VideoPlayer {
     console.log(`[Player] Loaded stream URL: ${url}`);
 
     if (this.emptyPlayerPrompt) this.emptyPlayerPrompt.style.display = 'none';
+    if (this.controlsOverlay) this.controlsOverlay.classList.remove('hidden');
+    if (this.mccContainer) this.mccContainer.classList.remove('hidden');
     const streamName = url.split('/').pop().split('?')[0] || 'Stream Video';
     this._showCenterPlayCard(streamName);
 
@@ -573,6 +583,7 @@ class VideoPlayer {
     }
 
     this.video.addEventListener('click', () => {
+      if (!this.hasMediaLoaded) return;
       if (this.video.paused) {
         this.togglePlay();
       } else {
@@ -582,6 +593,7 @@ class VideoPlayer {
   }
 
   _handleScreenTap() {
+    if (!this.hasMediaLoaded) return;
     if (this.video.paused) {
       if (this.controlsOverlay) this.controlsOverlay.classList.remove('hidden');
       if (this.mccContainer) this.mccContainer.classList.remove('hidden');

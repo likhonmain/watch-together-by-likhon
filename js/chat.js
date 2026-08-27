@@ -70,6 +70,28 @@ class ChatManager {
         if (e.key === 'Enter') sendMobile();
       });
     }
+
+    // Connect desktop sidebar chat input
+    const dtSendBtn = document.getElementById('desktop-chat-send');
+    const dtInput = document.getElementById('desktop-chat-input');
+    if (dtSendBtn && dtInput) {
+      const sendDesktop = () => {
+        const text = dtInput.value.trim();
+        if (!text) return;
+        if (this.sync) this.sync.sendChat(text, this.nickname);
+        this.appendMessage({
+          text: text,
+          sender: this.nickname,
+          timestamp: Date.now(),
+          isMe: true
+        });
+        dtInput.value = '';
+      };
+      dtSendBtn.addEventListener('click', sendDesktop);
+      dtInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') sendDesktop();
+      });
+    }
   }
 
   setNickname(name) {
@@ -131,6 +153,12 @@ class ChatManager {
     if (mpStream) {
       mpStream.appendChild(bubble.cloneNode(true));
       mpStream.scrollTop = mpStream.scrollHeight;
+    }
+
+    const dtStream = document.getElementById('desktop-chat-stream');
+    if (dtStream) {
+      dtStream.appendChild(bubble.cloneNode(true));
+      dtStream.scrollTop = dtStream.scrollHeight;
     }
   }
 

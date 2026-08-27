@@ -95,27 +95,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // Local File Input
-  if (dropzone && fileInput) {
-    dropzone.addEventListener('click', () => fileInput.click());
-
-    dropzone.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      dropzone.classList.add('dragover');
-    });
-
-    dropzone.addEventListener('dragleave', () => {
-      dropzone.classList.remove('dragover');
-    });
-
-    dropzone.addEventListener('drop', (e) => {
-      e.preventDefault();
-      dropzone.classList.remove('dragover');
-      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-        handleFileSelection(e.dataTransfer.files[0]);
-      }
-    });
-
+  // Local File Input (Direct Master Listener)
+  if (fileInput) {
     fileInput.addEventListener('change', (e) => {
       if (e.target.files && e.target.files[0]) {
         handleFileSelection(e.target.files[0]);
@@ -123,21 +104,44 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  // Bind all file picker triggers across Desktop & Mobile
+  const pickTriggers = [
+    'desktop-pick-file-btn',
+    'dv-btn-pick',
+    'strip-btn-pick-file',
+    'mp-btn-pick'
+  ];
+  pickTriggers.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('click', () => {
+        if (fileInput) fileInput.click();
+      });
+    }
+  });
+
   function handleFileSelection(file) {
     player.loadLocalFile(file);
     mediaLoaded = true;
 
-    // Update Badge UI
+    // Hide idle backdrop
+    const idleBackdrop = document.getElementById('video-idle-backdrop');
+    if (idleBackdrop) idleBackdrop.classList.add('hidden');
+
+    const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+    const movieLabel = `🎬 ${file.name} (${sizeMb} MB)`;
+
+    // Update Desktop Bar Title
+    const dvTitle = document.getElementById('dv-title');
+    if (dvTitle) dvTitle.innerText = movieLabel;
+
+    // Update Mobile Title
+    const mpTitle = document.getElementById('mp-movie-title');
+    if (mpTitle) mpTitle.innerText = movieLabel;
+
     if (fileInfoBadge && fileNameText) {
-      const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
       fileNameText.innerText = `✅ Loaded: ${file.name} (${sizeMb} MB)`;
       fileInfoBadge.classList.add('active');
-    }
-
-    const mpTitle = document.getElementById('mp-movie-title');
-    if (mpTitle) {
-      const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
-      mpTitle.innerText = `🎬 ${file.name} (${sizeMb} MB)`;
     }
 
     showToast(`Movie loaded: ${file.name}`, true, 3000);
@@ -152,83 +156,163 @@ document.addEventListener('DOMContentLoaded', async () => {
       player.loadStreamUrl(url);
       mediaLoaded = true;
 
+      const idleBackdrop = document.getElementById('video-idle-backdrop');
+      if (idleBackdrop) idleBackdrop.classList.add('hidden');
+
       const streamTitle = url.split('/').pop().split('?')[0] || url;
-      if (fileInfoBadge && fileNameText) {
-        fileNameText.innerText = `✅ Stream: ${streamTitle}`;
-        fileInfoBadge.classList.add('active');
-      }
+      const movieLabel = `🎬 ${streamTitle}`;
+
+      const dvTitle = document.getElementById('dv-title');
+      if (dvTitle) dvTitle.innerText = movieLabel;
+
       const mpTitle = document.getElementById('mp-movie-title');
-      if (mpTitle) {
-        mpTitle.innerText = `🎬 ${streamTitle}`;
-      }
+      if (mpTitle) mpTitle.innerText = movieLabel;
 
       showToast('Stream URL loaded', true, 3000);
       updateStartButtonState();
     });
   }
 
-  // Subtitle File Loader
-  if (subFileInput) {
-    subFileInput.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
+  // Subtitle File Loaders (Desktop & Mobile)
+  ['sub-file-input', 'desktop-sub-file-input'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
 
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        subtitles.parse(event.target.result);
-        showToast(`Subtitles loaded: ${file.name}`, true, 3000);
-      };
-      reader.readAsText(file);
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          subtitles.parse(event.target.result);
+          showToast(`Subtitles loaded: ${file.name}`, true, 3000);
+        };
+        reader.readAsText(file);
+      });
+    }
+  });
+
+  // Desktop Subtitle Controls
+  const desktopSubToggle = document.getElementById('desktop-sub-toggle');
+  if (desktopSubToggle) {
+    desktopSubToggle.addEventListener('click', () => {
+      const isVisible = subtitles.toggle();
+      desktopSubToggle.innerText = `Subtitles: ${isVisible ? 'ON' : 'OFF'}`;
+      desktopSubToggle.classList.toggle('btn-primary', isVisible);
+    });
+  }
+
+  const desktopSubMinus = document.getElementById('desktop-sub-minus');
+  const desktopSubPlus = document.getElementById('desktop-sub-plus');
+  const desktopSubReset = document.getElementById('desktop-sub-reset');
+  const desktopSubOffset = document.getElementById('desktop-sub-offset');
+
+  function updateDesktopSubOffset() {
+    if (desktopSubOffset) {
+      const ms = subtitles.offsetMs;
+      desktopSubOffset.innerText = `${ms > 0 ? '+' : ''}${ms}ms`;
+    }
+  }
+
+  if (desktopSubMinus) {
+    desktopSubMinus.addEventListener('click', () => {
+      subtitles.adjustOffset(-250);
+      updateDesktopSubOffset();
+    });
+  }
+  if (desktopSubPlus) {
+    desktopSubPlus.addEventListener('click', () => {
+      subtitles.adjustOffset(250);
+      updateDesktopSubOffset();
+    });
+  }
+  if (desktopSubReset) {
+    desktopSubReset.addEventListener('click', () => {
+      subtitles.resetOffset();
+      updateDesktopSubOffset();
     });
   }
 
   /* ------------------------------------------------------------------------
      2. Room Creation & Joining (WebRTC P2P)
      ------------------------------------------------------------------------ */
-  if (btnCreateRoom) {
-    btnCreateRoom.addEventListener('click', async () => {
-      btnCreateRoom.innerText = 'Creating...';
-      btnCreateRoom.disabled = true;
-      try {
-        const roomId = await sync.createRoom();
-        roomJoined = true;
-        updateRoomUI(roomId);
-        voice.initCallListener();
-        showToast(`Room created: ${roomId}. Copy the link and send to your friend!`, true, 5000);
-        updateStartButtonState();
-      } catch (err) {
-        console.error('Create room error:', err);
-        showToast('Could not create room. Please try again.', false);
-      } finally {
-        btnCreateRoom.innerText = 'Create New Room';
-        btnCreateRoom.disabled = false;
+  async function performCreateRoom(btnElement) {
+    if (btnElement) {
+      btnElement.innerText = 'Creating...';
+      btnElement.disabled = true;
+    }
+    try {
+      const roomId = await sync.createRoom();
+      roomJoined = true;
+      updateRoomUI(roomId);
+      voice.initCallListener();
+      showToast(`Room created: ${roomId}! Invite link ready.`, true, 5000);
+      updateStartButtonState();
+    } catch (err) {
+      console.error('Create room error:', err);
+      showToast('Could not create room. Please try again.', false);
+    } finally {
+      if (btnElement) {
+        btnElement.innerText = btnElement.id === 'desktop-btn-create' ? '➕ Create Room' : 'Create New Room';
+        btnElement.disabled = false;
       }
-    });
+    }
+  }
+
+  async function performJoinRoom(code, btnElement) {
+    if (!code) {
+      showToast('Please enter a room code.', false);
+      return;
+    }
+    if (btnElement) {
+      btnElement.innerText = 'Joining...';
+      btnElement.disabled = true;
+    }
+    try {
+      await sync.joinRoom(code);
+      roomJoined = true;
+      updateRoomUI(code);
+      voice.initCallListener();
+      showToast(`Joined room: ${code}!`, true, 3000);
+      updateStartButtonState();
+    } catch (err) {
+      console.error('Join room error:', err);
+      showToast('Could not join room. Make sure Host created the room first.', false);
+    } finally {
+      if (btnElement) {
+        btnElement.innerText = 'Join';
+        btnElement.disabled = false;
+      }
+    }
+  }
+
+  // Mobile / Generic Room Buttons
+  if (btnCreateRoom) {
+    btnCreateRoom.addEventListener('click', () => performCreateRoom(btnCreateRoom));
   }
 
   if (btnJoinRoom && inputRoomCode) {
-    btnJoinRoom.addEventListener('click', async () => {
-      const code = inputRoomCode.value.trim();
-      if (!code) {
-        showToast('Please enter a valid room code.', false);
-        return;
-      }
-      btnJoinRoom.innerText = 'Joining...';
-      btnJoinRoom.disabled = true;
-      try {
-        await sync.joinRoom(code);
-        roomJoined = true;
-        updateRoomUI(code);
-        voice.initCallListener();
-        showToast(`Joining room: ${code}...`, true, 3000);
-        updateStartButtonState();
-      } catch (err) {
-        console.error('Join room error:', err);
-        showToast('Could not join room. Make sure Host created the room first.', false);
-      } finally {
-        btnJoinRoom.innerText = 'Join Room';
-        btnJoinRoom.disabled = false;
-      }
+    btnJoinRoom.addEventListener('click', () => {
+      performJoinRoom(inputRoomCode.value.trim(), btnJoinRoom);
+    });
+    inputRoomCode.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') performJoinRoom(inputRoomCode.value.trim(), btnJoinRoom);
+    });
+  }
+
+  // Desktop Sidebar Room Buttons
+  const desktopBtnCreate = document.getElementById('desktop-btn-create');
+  if (desktopBtnCreate) {
+    desktopBtnCreate.addEventListener('click', () => performCreateRoom(desktopBtnCreate));
+  }
+
+  const desktopJoinBtn = document.getElementById('desktop-join-btn');
+  const desktopJoinInput = document.getElementById('desktop-join-input');
+  if (desktopJoinBtn && desktopJoinInput) {
+    desktopJoinBtn.addEventListener('click', () => {
+      performJoinRoom(desktopJoinInput.value.trim(), desktopJoinBtn);
+    });
+    desktopJoinInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') performJoinRoom(desktopJoinInput.value.trim(), desktopJoinBtn);
     });
   }
 
@@ -237,7 +321,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const autoRoom = urlParams.get('room');
   if (autoRoom) {
     console.log(`[App] Auto-joining room from URL: ${autoRoom}`);
-    inputRoomCode.value = autoRoom;
+    if (inputRoomCode) inputRoomCode.value = autoRoom;
+    if (desktopJoinInput) desktopJoinInput.value = autoRoom;
     updateRoomUI(autoRoom);
     sync.joinRoom(autoRoom).then(() => {
       roomJoined = true;
@@ -262,23 +347,45 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (stripBtnCreate) {
       stripBtnCreate.innerText = 'New Room';
     }
+
+    // Desktop Sidebar
+    const desktopRoomCode = document.getElementById('desktop-room-code');
+    const desktopRoomStatus = document.getElementById('desktop-room-status');
+    if (desktopRoomCode) desktopRoomCode.innerText = roomId;
+    if (desktopRoomStatus) desktopRoomStatus.innerHTML = '<span style="color: var(--accent-warning);">⏳ Waiting for friend to join...</span>';
+
+    // Mobile Panel
     const mpRoomLabel = document.getElementById('mp-room-label');
     const mpInfoCode = document.getElementById('mp-info-code');
+    const mpInfoStatus = document.getElementById('mp-info-status');
     if (mpRoomLabel) mpRoomLabel.innerText = `Room: ${roomId}`;
     if (mpInfoCode) mpInfoCode.innerText = roomId;
+    if (mpInfoStatus) mpInfoStatus.innerText = '⌛ Waiting for Friend...';
 
     const newUrl = `${window.location.protocol}//${window.location.host}${window.location.pathname}?room=${roomId}`;
     window.history.replaceState({ path: newUrl }, '', newUrl);
   }
 
-  // Wire Room Strip Buttons
-  if (btnPromptPick && fileInput) {
-    btnPromptPick.addEventListener('click', () => fileInput.click());
-  }
-
-  if (stripBtnPickFile && fileInput) {
-    stripBtnPickFile.addEventListener('click', () => fileInput.click());
-  }
+  // Bind All Copy Link Triggers
+  const copyTriggers = ['desktop-btn-copy', 'dv-btn-copy-link', 'btn-copy-link', 'strip-btn-copy'];
+  copyTriggers.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('click', () => {
+        const roomId = sync.roomId;
+        if (!roomId) {
+          showToast('Please create or join a room first!', false);
+          return;
+        }
+        const inviteUrl = `${window.location.protocol}//${window.location.host}${window.location.pathname}?room=${roomId}`;
+        navigator.clipboard.writeText(inviteUrl).then(() => {
+          showToast('📋 Room invite link copied to clipboard!', true);
+        }).catch(() => {
+          showToast(`Invite link: ${inviteUrl}`, true, 6000);
+        });
+      });
+    }
+  });
 
   if (stripBtnCreate && btnCreateRoom) {
     stripBtnCreate.addEventListener('click', () => {
@@ -365,54 +472,66 @@ document.addEventListener('DOMContentLoaded', async () => {
     const mpInfoStatus = document.getElementById('mp-info-status');
     const mpBtnReconnect = document.getElementById('mp-btn-reconnect');
 
+    const dvStatusDot = document.getElementById('dv-status-dot');
+    const dvStatusText = document.getElementById('dv-status-text');
+    const desktopRoomStatus = document.getElementById('desktop-room-status');
+
     if (status === 'connected') {
       if (statusDot) statusDot.className = 'status-dot connected';
       if (statusText) statusText.innerText = 'Connected with Friend';
+      if (dvStatusDot) dvStatusDot.className = 'status-dot connected';
+      if (dvStatusText) dvStatusText.innerText = 'Connected with Friend';
+      if (desktopRoomStatus) desktopRoomStatus.innerHTML = '<span style="color: var(--accent-success); font-weight: 600;">🟢 Connected with Friend</span>';
+
       if (mpStatusDot) mpStatusDot.className = 'status-dot connected';
       if (mpStatusText) mpStatusText.innerText = 'Connected with Friend';
       if (mpInfoStatus) mpInfoStatus.innerHTML = '<span style="color: var(--accent-success);">🟢 Connected with Friend</span>';
+
       if (stripBtnReconnect) stripBtnReconnect.style.display = 'none';
       if (mpBtnReconnect) mpBtnReconnect.style.display = 'none';
-      if (modalPeerStatus) {
-        modalPeerStatus.innerHTML = '<span style="color: var(--accent-success); font-weight: bold;">🎉 Friend is in the room! Both ready to watch.</span>';
-      }
     } else if (status === 'connecting') {
       if (statusDot) statusDot.className = 'status-dot connecting';
       if (statusText) statusText.innerText = detail || 'Connecting...';
+      if (dvStatusDot) dvStatusDot.className = 'status-dot connecting';
+      if (dvStatusText) dvStatusText.innerText = detail || 'Connecting...';
+      if (desktopRoomStatus) desktopRoomStatus.innerHTML = `<span style="color: var(--accent-warning);">⏳ ${detail || 'Connecting...'}</span>`;
+
       if (mpStatusDot) mpStatusDot.className = 'status-dot connecting';
       if (mpStatusText) mpStatusText.innerText = detail || 'Connecting...';
       if (mpInfoStatus) mpInfoStatus.innerHTML = `<span style="color: var(--accent-warning);">⏳ ${detail || 'Connecting...'}</span>`;
+
       if (stripBtnReconnect) stripBtnReconnect.style.display = 'none';
       if (mpBtnReconnect) mpBtnReconnect.style.display = 'none';
-      if (modalPeerStatus) {
-        modalPeerStatus.innerHTML = `<span style="color: var(--accent-warning);">⏳ ${detail || 'Connecting to peer...'}</span>`;
-      }
     } else if (status === 'ready') {
       if (statusDot) statusDot.className = 'status-dot connecting';
       const msg = sync.isHost ? 'Waiting for Friend...' : 'Room Ready';
       if (statusText) statusText.innerText = msg;
+      if (dvStatusDot) dvStatusDot.className = 'status-dot connecting';
+      if (dvStatusText) dvStatusText.innerText = msg;
+      if (desktopRoomStatus) desktopRoomStatus.innerHTML = `<span style="color: var(--accent-warning);">⏳ ${msg}</span>`;
+
       if (mpStatusDot) mpStatusDot.className = 'status-dot connecting';
       if (mpStatusText) mpStatusText.innerText = msg;
       if (mpInfoStatus) mpInfoStatus.innerHTML = `<span style="color: var(--accent-warning);">⏳ ${msg}</span>`;
+
       if (stripBtnReconnect) stripBtnReconnect.style.display = 'none';
       if (mpBtnReconnect) mpBtnReconnect.style.display = 'none';
-      if (modalPeerStatus) {
-        modalPeerStatus.innerHTML = '<span style="color: var(--accent-warning);">⏳ Waiting for your friend to join... (Share link above)</span>';
-      }
     } else {
       if (statusDot) statusDot.className = 'status-dot';
       if (statusText) statusText.innerText = detail || 'Disconnected';
+      if (dvStatusDot) dvStatusDot.className = 'status-dot';
+      if (dvStatusText) dvStatusText.innerText = detail || 'Disconnected';
+      if (desktopRoomStatus) desktopRoomStatus.innerText = 'Create or join a room to sync';
+
       if (mpStatusDot) mpStatusDot.className = 'status-dot';
       if (mpStatusText) mpStatusText.innerText = detail || 'Disconnected';
       if (mpInfoStatus) mpInfoStatus.innerHTML = `<span style="color: var(--accent-danger);">❌ Disconnected</span>`;
+
       if (stripBtnReconnect && sync.roomId && !sync.isHost) {
         stripBtnReconnect.style.display = 'inline-flex';
       }
       if (mpBtnReconnect && sync.roomId && !sync.isHost) {
         mpBtnReconnect.style.display = 'block';
-      }
-      if (modalPeerStatus) {
-        modalPeerStatus.innerHTML = '<span style="color: var(--text-muted);">Not connected to anyone yet.</span>';
       }
     }
   };
