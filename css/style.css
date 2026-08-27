@@ -960,6 +960,34 @@ video#main-video {
   border: 1px solid var(--border-color);
 }
 
+.chat-bubble.system {
+  align-self: center;
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px dashed rgba(99, 102, 241, 0.3);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  max-width: 92%;
+  text-align: center;
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-sm);
+}
+
+.chat-bubble.system .chat-sender {
+  color: var(--accent-secondary);
+  font-size: 0.65rem;
+}
+
+.chat-tab-badge {
+  background: var(--accent-danger);
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 999px;
+  margin-left: 3px;
+  vertical-align: middle;
+}
+
 .chat-sender {
   font-size: 0.7rem;
   font-weight: 600;

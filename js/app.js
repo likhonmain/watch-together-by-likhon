@@ -606,6 +606,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const targetId = btn.getAttribute('data-tab');
         const targetPane = document.getElementById(targetId);
         if (targetPane) targetPane.classList.add('active');
+        if (targetId === 'mp-tab-chat' && chat) {
+          chat.resetUnreadBadge();
+        }
       });
     });
 
