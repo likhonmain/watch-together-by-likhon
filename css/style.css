@@ -1502,16 +1502,7 @@ video#main-video {
    Persistent Room Strip (Always Visible)
    -------------------------------------------------------------------------- */
 .room-strip {
-  background: var(--bg-surface);
-  border-bottom: 1px solid var(--border-color);
-  padding: 0.45rem 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  font-size: 0.8rem;
-  z-index: 45;
-  flex-wrap: wrap;
+  display: none !important;
 }
 
 .room-strip-left, .room-strip-right {
