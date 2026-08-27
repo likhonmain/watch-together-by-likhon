@@ -281,6 +281,7 @@ class SyncEngine {
       case 'pause':
       case 'seek':
       case 'rate':
+      case 'start_watching':
         this.isRemoteUpdate = true;
         if (this.onActionReceived) this.onActionReceived(data);
         setTimeout(() => { this.isRemoteUpdate = false; }, 350);

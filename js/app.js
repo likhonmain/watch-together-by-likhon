@@ -135,9 +135,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     const dvTitle = document.getElementById('dv-title');
     if (dvTitle) dvTitle.innerText = movieLabel;
 
-    // Update Mobile Title
+    // Update Mobile Movie Card Title, Size, & Tag
     const mpTitle = document.getElementById('mp-movie-title');
-    if (mpTitle) mpTitle.innerText = movieLabel;
+    if (mpTitle) mpTitle.innerText = file.name;
+    const mpSize = document.getElementById('mp-movie-size');
+    if (mpSize) mpSize.innerText = `${sizeMb} MB`;
+    const mpTag = document.getElementById('mp-movie-tag');
+    if (mpTag) {
+      mpTag.innerText = '✅ Ready to Watch';
+      mpTag.style.color = 'var(--accent-success)';
+      mpTag.style.background = 'rgba(16, 185, 129, 0.15)';
+    }
 
     if (fileInfoBadge && fileNameText) {
       fileNameText.innerText = `✅ Loaded: ${file.name} (${sizeMb} MB)`;
@@ -356,11 +364,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (desktopRoomStatus) desktopRoomStatus.innerHTML = '<span style="color: var(--accent-warning);">⏳ Waiting for friend to join...</span>';
 
     // Mobile Panel
-    const mpRoomLabel = document.getElementById('mp-room-label');
     const mpInfoCode = document.getElementById('mp-info-code');
+    const mpRoomBadge = document.getElementById('mp-room-badge');
     const mpInfoStatus = document.getElementById('mp-info-status');
-    if (mpRoomLabel) mpRoomLabel.innerText = `Room: ${roomId}`;
     if (mpInfoCode) mpInfoCode.innerText = roomId;
+    if (mpRoomBadge) mpRoomBadge.innerHTML = `Room: <strong>${roomId}</strong>`;
     if (mpInfoStatus) mpInfoStatus.innerText = '⌛ Waiting for Friend...';
 
     const newUrl = `${window.location.protocol}//${window.location.host}${window.location.pathname}?room=${roomId}`;
@@ -441,28 +449,75 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  const startButtons = [
+    document.getElementById('btn-start-watching-mobile'),
+    document.getElementById('desktop-btn-start-watching'),
+    document.getElementById('desktop-sidebar-btn-start')
+  ].filter(Boolean);
+
+  const mpStartDesc = document.getElementById('mp-start-desc');
+
   function updateStartButtonState() {
-    if (!btnDismissSetup) return;
-    if (mediaLoaded && roomJoined) {
-      btnDismissSetup.innerText = '▶ Enter Theater & Watch Together';
-      btnDismissSetup.classList.add('btn-gradient');
-      btnDismissSetup.disabled = false;
-    } else if (mediaLoaded && !roomJoined) {
-      btnDismissSetup.innerText = '⚠️ Please Create or Join a Room (Step 2)';
-    } else if (!mediaLoaded && roomJoined) {
-      btnDismissSetup.innerText = '⚠️ Please Choose Movie File (Step 1)';
-    } else {
-      btnDismissSetup.innerText = 'Complete Steps 1 & 2 to Start Watching';
+    const isPeerConnected = sync.connections && sync.connections.length > 0;
+    const isReady = mediaLoaded && isPeerConnected;
+
+    startButtons.forEach(btn => {
+      btn.disabled = !isReady;
+      btn.classList.toggle('ready', isReady);
+      if (isReady) {
+        btn.innerText = '▶️ Start Watching Together';
+      } else if (!mediaLoaded && !isPeerConnected) {
+        btn.innerText = 'Select Movie & Connect with Friend';
+      } else if (!mediaLoaded) {
+        btn.innerText = 'Select Movie File to Start';
+      } else if (!isPeerConnected) {
+        btn.innerText = 'Waiting for Friend to Join...';
+      }
+    });
+
+    if (mpStartDesc) {
+      if (isReady) {
+        mpStartDesc.innerText = '✅ Ready! Tap to start playing in sync on both screens';
+        mpStartDesc.style.color = 'var(--accent-success)';
+      } else if (!mediaLoaded && !isPeerConnected) {
+        mpStartDesc.innerText = 'Step 1: Select movie file • Step 2: Share 3-digit code';
+        mpStartDesc.style.color = 'var(--text-muted)';
+      } else if (!mediaLoaded) {
+        mpStartDesc.innerText = 'Friend connected! Now choose your movie file above';
+        mpStartDesc.style.color = 'var(--accent-warning)';
+      } else {
+        mpStartDesc.innerText = 'Movie ready! Share 3-digit code with your friend';
+        mpStartDesc.style.color = 'var(--accent-warning)';
+      }
     }
   }
 
-  // Re-open setup modal if user clicks setup button in header
-  const btnOpenSetup = document.getElementById('btn-open-setup');
-  if (btnOpenSetup) {
-    btnOpenSetup.addEventListener('click', () => {
-      setupOverlay.classList.toggle('hidden');
-    });
+  function triggerStartWatchingTogether() {
+    if (!mediaLoaded) {
+      showToast('Please select a movie file first.', false);
+      return;
+    }
+    if (!sync.connections || sync.connections.length === 0) {
+      showToast('Waiting for friend to join your room first.', false);
+      return;
+    }
+
+    // Send WebRTC sync action to peer
+    sync.sendAction('start_watching', 0);
+
+    // Play locally from beginning
+    player.video.currentTime = 0;
+    player.video.play().catch(e => console.warn('Play error:', e));
+
+    showToast('🎬 Watching Together Started!', true, 4000);
   }
+
+  startButtons.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      triggerStartWatchingTogether();
+    });
+  });
 
   /* ------------------------------------------------------------------------
      3. Sync Status & Peer Join / Leave Handlers
@@ -535,6 +590,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         mpBtnReconnect.style.display = 'block';
       }
     }
+    updateStartButtonState();
   };
 
   /* ------------------------------------------------------------------------
@@ -672,6 +728,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       timestamp: Date.now(),
       isMe: false
     });
+    updateStartButtonState();
   };
 
   sync.onPeerDisconnected = (peerId) => {
@@ -683,6 +740,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       timestamp: Date.now(),
       isMe: false
     });
+    updateStartButtonState();
   };
 
   sync.onPingUpdated = (pingMs) => {

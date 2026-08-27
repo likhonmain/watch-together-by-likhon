@@ -632,6 +632,14 @@ class VideoPlayer {
 
     this.sync.onActionReceived = (action) => {
       switch (action.type) {
+        case 'start_watching':
+          this.video.currentTime = action.time || 0;
+          this.video.play().catch(e => console.warn('Autoplay blocked:', e));
+          this._showGestureAnimation('🎬 Started Watching Together!');
+          this._hideCenterPlayCard();
+          if (window.showToast) window.showToast('🎬 Friend started watching together!', true, 4000);
+          break;
+
         case 'play':
           this.video.currentTime = action.time;
           if (action.rate) this.video.playbackRate = action.rate;
