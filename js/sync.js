@@ -35,18 +35,38 @@ class SyncEngine {
   }
 
   /**
-   * Fast, reliable Google STUN cluster (clean, zero 400 error delay)
+   * ICE Servers: Google STUN (for direct P2P) + Metered.ca TURN (for relay through NAT/firewalls)
+   * TURN relay is essential for mobile data (4G/5G symmetric NAT) connections.
    */
   _getPeerConfig() {
     return {
       debug: 1,
       config: {
         iceServers: [
+          // Google STUN cluster (fast direct P2P when possible)
           { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' },
-          { urls: 'stun:stun2.l.google.com:19302' },
-          { urls: 'stun:stun3.l.google.com:19302' },
-          { urls: 'stun:stun4.l.google.com:19302' }
+          { urls: 'stun:stun.relay.metered.ca:80' },
+          // Metered.ca Global TURN relay (punches through mobile/symmetric NAT)
+          {
+            urls: 'turn:global.relay.metered.ca:80',
+            username: '1cf2d79f96fff8c808bf9920',
+            credential: 'mBOMO6wq0kfXKWgP'
+          },
+          {
+            urls: 'turn:global.relay.metered.ca:80?transport=tcp',
+            username: '1cf2d79f96fff8c808bf9920',
+            credential: 'mBOMO6wq0kfXKWgP'
+          },
+          {
+            urls: 'turn:global.relay.metered.ca:443',
+            username: '1cf2d79f96fff8c808bf9920',
+            credential: 'mBOMO6wq0kfXKWgP'
+          },
+          {
+            urls: 'turns:global.relay.metered.ca:443?transport=tcp',
+            username: '1cf2d79f96fff8c808bf9920',
+            credential: 'mBOMO6wq0kfXKWgP'
+          }
         ],
         iceCandidatePoolSize: 10
       }
