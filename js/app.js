@@ -49,6 +49,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Room Status Inside Setup Modal
   const modalPeerStatus = document.getElementById('modal-peer-status');
 
+  // Room Strip Elements
+  const stripRoomCode = document.getElementById('strip-room-code');
+  const stripBtnCopy = document.getElementById('strip-btn-copy');
+  const stripBtnCreate = document.getElementById('strip-btn-create');
+  const stripBtnPickFile = document.getElementById('strip-btn-pick-file');
+  const btnPromptPick = document.getElementById('btn-prompt-pick');
+
   // Voice Elements
   const btnVoiceToggle = document.getElementById('btn-voice-toggle');
   const btnVoiceMute = document.getElementById('btn-voice-mute');
@@ -234,8 +241,37 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (roomDisplay) {
       roomDisplay.innerText = roomId;
     }
+    if (stripRoomCode) {
+      stripRoomCode.innerText = roomId;
+    }
+    if (stripBtnCopy) {
+      stripBtnCopy.style.display = 'inline-flex';
+    }
+    if (stripBtnCreate) {
+      stripBtnCreate.innerText = 'New Room';
+    }
     const newUrl = `${window.location.protocol}//${window.location.host}${window.location.pathname}?room=${roomId}`;
     window.history.replaceState({ path: newUrl }, '', newUrl);
+  }
+
+  // Wire Room Strip Buttons
+  if (btnPromptPick && fileInput) {
+    btnPromptPick.addEventListener('click', () => fileInput.click());
+  }
+
+  if (stripBtnPickFile && fileInput) {
+    stripBtnPickFile.addEventListener('click', () => fileInput.click());
+  }
+
+  if (stripBtnCreate && btnCreateRoom) {
+    stripBtnCreate.addEventListener('click', () => {
+      // If room already exists, clicking new room creates a new one
+      btnCreateRoom.click();
+    });
+  }
+
+  if (stripBtnCopy && btnCopyLink) {
+    stripBtnCopy.addEventListener('click', () => btnCopyLink.click());
   }
 
   // Copy Shareable Invite Link
@@ -263,7 +299,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (btnDismissSetup) {
     btnDismissSetup.addEventListener('click', () => {
       setupOverlay.classList.add('hidden');
-      // Ensure video starts explicitly paused
       player.video.pause();
     });
   }

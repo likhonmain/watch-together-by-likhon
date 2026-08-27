@@ -14,6 +14,9 @@ class VideoPlayer {
     this.videoWrapper = document.getElementById('video-wrapper');
     this.controlsOverlay = document.getElementById('controls-overlay');
     this.subtitleDisplay = document.getElementById('subtitle-text');
+    this.centerPlayOverlay = document.getElementById('center-play-overlay');
+    this.btnGiantPlay = document.getElementById('btn-giant-play');
+    this.emptyPlayerPrompt = document.getElementById('empty-player-prompt');
 
     // Controls
     this.playPauseBtn = document.getElementById('btn-play-pause');
@@ -47,6 +50,7 @@ class VideoPlayer {
     this.hideControlsTimeout = null;
     this.lastTapTimeLeft = 0;
     this.lastTapTimeRight = 0;
+    this.hasMediaLoaded = false;
 
     this.init();
   }
@@ -60,6 +64,19 @@ class VideoPlayer {
     this._bindKeyboardShortcuts();
     this._bindMobileGestures();
     this._bindSyncEvents();
+
+    if (this.btnGiantPlay) {
+      this.btnGiantPlay.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.togglePlay();
+      });
+    }
+
+    if (this.centerPlayOverlay) {
+      this.centerPlayOverlay.addEventListener('click', () => {
+        this.togglePlay();
+      });
+    }
 
     // Start subtitle rendering loop
     this._startSubtitleLoop();
@@ -76,14 +93,21 @@ class VideoPlayer {
     this.video.currentTime = 0;
     this.video.load();
     this.video.pause();
+    this.hasMediaLoaded = true;
 
     console.log(`[Player] Loaded local file: ${file.name} (${(file.size / (1024*1024)).toFixed(1)} MB)`);
 
-    // Broadcast file info to peer so they can match
+    // Hide empty prompt & show center play button
+    if (this.emptyPlayerPrompt) this.emptyPlayerPrompt.style.display = 'none';
+    this._showCenterPlayCard(file.name);
+
     this.video.onloadedmetadata = () => {
-      this.video.pause(); // Guarantee it remains paused
+      this.video.pause();
       this._updatePlayButton(false);
       this._updateProgress();
+      this._updateTimeDisplay();
+      this._showCenterPlayCard(file.name);
+
       if (this.sync) {
         this.sync.sendFileInfo(file.name, file.size, this.video.duration);
       }
@@ -97,12 +121,42 @@ class VideoPlayer {
   loadStreamUrl(url) {
     if (!url) return;
     this.video.src = url;
+    this.video.pause();
+    this.video.currentTime = 0;
     this.video.load();
+    this.video.pause();
+    this.hasMediaLoaded = true;
     console.log(`[Player] Loaded stream URL: ${url}`);
 
+    if (this.emptyPlayerPrompt) this.emptyPlayerPrompt.style.display = 'none';
+    const streamName = url.split('/').pop().split('?')[0] || 'Stream Video';
+    this._showCenterPlayCard(streamName);
+
     this.video.onloadedmetadata = () => {
+      this.video.pause();
+      this._updatePlayButton(false);
+      this._updateProgress();
+      this._updateTimeDisplay();
+      this._showCenterPlayCard(streamName);
       this._detectAudioTracks();
     };
+  }
+
+  _showCenterPlayCard(title = '') {
+    if (!this.centerPlayOverlay) return;
+    const titleEl = document.getElementById('center-movie-title');
+    const durStr = this.video.duration ? ` (${this._formatTime(this.video.duration)})` : '';
+    if (titleEl) {
+      titleEl.innerText = title ? `▶ ${title}${durStr}` : 'Start Watching';
+    }
+    this.centerPlayOverlay.classList.remove('hidden');
+    this.centerPlayOverlay.style.display = 'flex';
+  }
+
+  _hideCenterPlayCard() {
+    if (!this.centerPlayOverlay) return;
+    this.centerPlayOverlay.classList.add('hidden');
+    this.centerPlayOverlay.style.display = 'none';
   }
 
   /* ------------------------------------------------------------------------
@@ -119,6 +173,8 @@ class VideoPlayer {
 
     this.video.addEventListener('play', () => {
       this._updatePlayButton(true);
+      this._hideCenterPlayCard();
+      this._setupControlsAutoHide();
       if (this.sync && !this.sync.isRemoteUpdate) {
         this.sync.sendPlay(this.video.currentTime, this.video.playbackRate);
       }
@@ -126,6 +182,13 @@ class VideoPlayer {
 
     this.video.addEventListener('pause', () => {
       this._updatePlayButton(false);
+      // When paused, NEVER hide controls!
+      if (this.controlsOverlay) this.controlsOverlay.classList.remove('hidden');
+      if (this.hasMediaLoaded) {
+        this._showCenterPlayCard();
+      }
+      clearTimeout(this.hideControlsTimeout);
+
       if (this.sync && !this.sync.isRemoteUpdate) {
         this.sync.sendPause(this.video.currentTime);
       }
@@ -153,15 +216,14 @@ class VideoPlayer {
     this.video.addEventListener('error', (e) => {
       console.error('[Player] Video element error:', this.video.error);
       const err = this.video.error;
-      let msg = 'Could not play this video file.';
-      if (err) {
-        if (err.code === 4) {
-          msg = 'Format or Codec not supported by this browser. (Note: HEVC/MKV without AAC audio requires desktop PotPlayer).';
-        }
+      let msg = 'Could not play this video file in browser.';
+      if (err && err.code === 4) {
+        msg = 'Note: MKV/HEVC with AC3 audio is not natively supported in mobile browsers. Use MP4 with AAC, or run the included potplayer_sync.py on PC!';
       }
       const banner = document.getElementById('format-warning-banner');
       if (banner) {
         banner.style.display = 'block';
+        banner.style.background = 'rgba(239, 68, 68, 0.95)';
         banner.innerText = msg;
       }
     });
@@ -171,22 +233,18 @@ class VideoPlayer {
      Controls Events (Play/Pause, Skip, Volume, Menus)
      ------------------------------------------------------------------------ */
   _bindControlEvents() {
-    // Play / Pause Toggle
     if (this.playPauseBtn) {
       this.playPauseBtn.addEventListener('click', () => this.togglePlay());
     }
 
-    // Skip Back (-10s)
     if (this.skipBackBtn) {
       this.skipBackBtn.addEventListener('click', () => this.seekDelta(-10));
     }
 
-    // Skip Forward (+10s)
     if (this.skipForwardBtn) {
       this.skipForwardBtn.addEventListener('click', () => this.seekDelta(10));
     }
 
-    // Volume & Mute
     if (this.volumeBtn) {
       this.volumeBtn.addEventListener('click', () => this.toggleMute());
     }
@@ -199,7 +257,6 @@ class VideoPlayer {
       });
     }
 
-    // Playback Speed Menu
     if (this.speedBtn && this.speedMenu) {
       this.speedBtn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -215,14 +272,12 @@ class VideoPlayer {
       });
     }
 
-    // Subtitles Menu
     if (this.subtitlesBtn && this.subtitlesMenu) {
       this.subtitlesBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         this._toggleMenu(this.subtitlesMenu);
       });
 
-      // Subtitle offset buttons
       const delayMinusBtn = document.getElementById('sub-delay-minus');
       const delayPlusBtn = document.getElementById('sub-delay-plus');
       const delayResetBtn = document.getElementById('sub-delay-reset');
@@ -250,7 +305,6 @@ class VideoPlayer {
         });
       }
 
-      // Subtitle toggle (CC on/off)
       const subToggleBtn = document.getElementById('sub-toggle');
       if (subToggleBtn) {
         subToggleBtn.addEventListener('click', (e) => {
@@ -264,7 +318,6 @@ class VideoPlayer {
       }
     }
 
-    // Audio Track Menu
     if (this.audioTracksBtn && this.audioMenu) {
       this.audioTracksBtn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -272,17 +325,14 @@ class VideoPlayer {
       });
     }
 
-    // Fullscreen Toggle
     if (this.fullscreenBtn) {
       this.fullscreenBtn.addEventListener('click', () => this.toggleFullscreen());
     }
 
-    // Close menus when clicking outside
     document.addEventListener('click', () => {
       this._closeAllMenus();
     });
 
-    // Auto-hide controls after inactivity
     this._setupControlsAutoHide();
   }
 
@@ -314,7 +364,6 @@ class VideoPlayer {
         handleSeek(e);
       }
 
-      // Tooltip preview time
       if (this.timelineContainer && this.video.duration) {
         const rect = this.timelineTrack.getBoundingClientRect();
         if (e.clientX >= rect.left && e.clientX <= rect.right) {
@@ -333,7 +382,6 @@ class VideoPlayer {
       }
     });
 
-    // Touch support for mobile scrubbing
     this.timelineContainer.addEventListener('touchstart', (e) => {
       this.isDraggingTimeline = true;
       this.timelineContainer.classList.add('dragging');
@@ -400,7 +448,6 @@ class VideoPlayer {
      ------------------------------------------------------------------------ */
   _bindKeyboardShortcuts() {
     window.addEventListener('keydown', (e) => {
-      // Don't trigger if user is typing in chat or text input
       const tag = e.target.tagName.toLowerCase();
       if (tag === 'input' || tag === 'textarea' || e.target.isContentEditable) {
         return;
@@ -452,12 +499,12 @@ class VideoPlayer {
           }
           break;
         case 'Period':
-          if (e.shiftKey) { // '>' key
+          if (e.shiftKey) {
             this.cycleSpeed(1);
           }
           break;
         case 'Comma':
-          if (e.shiftKey) { // '<' key
+          if (e.shiftKey) {
             this.cycleSpeed(-1);
           }
           break;
@@ -466,21 +513,20 @@ class VideoPlayer {
   }
 
   /* ------------------------------------------------------------------------
-     Mobile Touch Gestures (Double-tap left -10s, right +10s, single tap UI)
+     Mobile Touch Gestures
      ------------------------------------------------------------------------ */
   _bindMobileGestures() {
     if (this.tapZoneLeft) {
       this.tapZoneLeft.addEventListener('touchend', (e) => {
         const now = Date.now();
         if (now - this.lastTapTimeLeft < 300) {
-          // Double tap detected on left
           e.preventDefault();
           this.seekDelta(-10);
           this._triggerRipple(this.tapZoneLeft, '-10s');
           this.lastTapTimeLeft = 0;
         } else {
           this.lastTapTimeLeft = now;
-          this._toggleControlsVisibility();
+          this._handleScreenTap();
         }
       });
     }
@@ -489,22 +535,41 @@ class VideoPlayer {
       this.tapZoneRight.addEventListener('touchend', (e) => {
         const now = Date.now();
         if (now - this.lastTapTimeRight < 300) {
-          // Double tap detected on right
           e.preventDefault();
           this.seekDelta(10);
           this._triggerRipple(this.tapZoneRight, '+10s');
           this.lastTapTimeRight = 0;
         } else {
           this.lastTapTimeRight = now;
-          this._toggleControlsVisibility();
+          this._handleScreenTap();
         }
       });
     }
 
-    // Video click toggles play or controls on desktop
     this.video.addEventListener('click', () => {
-      this.togglePlay();
+      if (this.video.paused) {
+        this.togglePlay();
+      } else {
+        this._handleScreenTap();
+      }
     });
+  }
+
+  _handleScreenTap() {
+    if (this.video.paused) {
+      // If paused, always keep controls visible
+      if (this.controlsOverlay) this.controlsOverlay.classList.remove('hidden');
+      return;
+    }
+    // If playing, toggle controls
+    if (this.controlsOverlay) {
+      if (this.controlsOverlay.classList.contains('hidden')) {
+        this.controlsOverlay.classList.remove('hidden');
+        this._setupControlsAutoHide();
+      } else {
+        this.controlsOverlay.classList.add('hidden');
+      }
+    }
   }
 
   _triggerRipple(container, text) {
@@ -534,12 +599,14 @@ class VideoPlayer {
           if (action.rate) this.video.playbackRate = action.rate;
           this.video.play().catch(e => console.warn('Autoplay blocked:', e));
           this._showGestureAnimation('Play (Synced)');
+          this._hideCenterPlayCard();
           break;
 
         case 'pause':
           this.video.currentTime = action.time;
           this.video.pause();
           this._showGestureAnimation('Pause (Synced)');
+          this._showCenterPlayCard();
           break;
 
         case 'seek':
@@ -554,7 +621,6 @@ class VideoPlayer {
           break;
 
         case 'heartbeat':
-          // Drift correction: if client drifts by > 0.6s, correct smoothly
           const drift = Math.abs(this.video.currentTime - action.time);
           if (drift > 0.6) {
             console.log(`[Sync] Drift of ${drift.toFixed(2)}s detected. Adjusting to ${action.time.toFixed(2)}s`);
@@ -562,8 +628,10 @@ class VideoPlayer {
           }
           if (action.isPlaying && this.video.paused) {
             this.video.play().catch(() => {});
+            this._hideCenterPlayCard();
           } else if (!action.isPlaying && !this.video.paused) {
             this.video.pause();
+            this._showCenterPlayCard();
           }
           if (action.rate && this.video.playbackRate !== action.rate) {
             this.video.playbackRate = action.rate;
@@ -579,11 +647,16 @@ class VideoPlayer {
      ------------------------------------------------------------------------ */
   togglePlay() {
     if (this.video.paused) {
-      this.video.play();
-      this._showGestureAnimation('Play');
+      this.video.play().then(() => {
+        this._showGestureAnimation('Play');
+        this._hideCenterPlayCard();
+      }).catch((err) => {
+        console.warn('Playback blocked or failed:', err);
+      });
     } else {
       this.video.pause();
       this._showGestureAnimation('Pause');
+      this._showCenterPlayCard();
     }
   }
 
@@ -602,7 +675,7 @@ class VideoPlayer {
   cycleSpeed(direction) {
     const speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
     let idx = speeds.indexOf(this.video.playbackRate);
-    if (idx === -1) idx = 2; // default 1.0
+    if (idx === -1) idx = 2;
     idx = Math.max(0, Math.min(speeds.length - 1, idx + direction));
     this.setPlaybackSpeed(speeds[idx]);
   }
@@ -643,7 +716,6 @@ class VideoPlayer {
     if (!this.audioMenu) return;
     this.audioMenu.innerHTML = '<div class="menu-header">Audio Tracks</div>';
 
-    // Check if HTML5 audioTracks API exists (e.g. Safari / experimental Chrome)
     if (this.video.audioTracks && this.video.audioTracks.length > 1) {
       for (let i = 0; i < this.video.audioTracks.length; i++) {
         const track = this.video.audioTracks[i];
@@ -661,7 +733,6 @@ class VideoPlayer {
       }
       if (this.audioTracksBtn) this.audioTracksBtn.style.display = 'flex';
     } else {
-      // Single track or not exposed by browser
       const info = document.createElement('div');
       info.className = 'menu-item';
       info.innerText = 'Standard Audio (Default)';
@@ -736,32 +807,17 @@ class VideoPlayer {
   }
 
   _setupControlsAutoHide() {
-    const show = () => {
+    clearTimeout(this.hideControlsTimeout);
+    if (!this.video.paused) {
+      this.hideControlsTimeout = setTimeout(() => {
+        if (!this.isDraggingTimeline && !this._isAnyMenuOpen()) {
+          if (this.controlsOverlay) this.controlsOverlay.classList.add('hidden');
+          if (this.videoWrapper) this.videoWrapper.style.cursor = 'none';
+        }
+      }, 3500);
+    } else {
       if (this.controlsOverlay) this.controlsOverlay.classList.remove('hidden');
       if (this.videoWrapper) this.videoWrapper.style.cursor = 'default';
-      clearTimeout(this.hideControlsTimeout);
-      if (!this.video.paused) {
-        this.hideControlsTimeout = setTimeout(() => {
-          if (!this.isDraggingTimeline && !this._isAnyMenuOpen()) {
-            if (this.controlsOverlay) this.controlsOverlay.classList.add('hidden');
-            if (this.videoWrapper) this.videoWrapper.style.cursor = 'none';
-          }
-        }, 3500);
-      }
-    };
-
-    if (this.videoWrapper) {
-      this.videoWrapper.addEventListener('mousemove', show);
-      this.videoWrapper.addEventListener('touchstart', show, { passive: true });
-    }
-  }
-
-  _toggleControlsVisibility() {
-    if (!this.controlsOverlay) return;
-    if (this.controlsOverlay.classList.contains('hidden')) {
-      this.controlsOverlay.classList.remove('hidden');
-    } else {
-      this.controlsOverlay.classList.add('hidden');
     }
   }
 

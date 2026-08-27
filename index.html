@@ -8,11 +8,25 @@
   <title>Watch Together by Likhon</title>
   
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='25' fill='%236366f1'/><polygon points='38,28 72,50 38,72' fill='white'/></svg>">
-  <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="manifest" href="manifest.json?v=2.2">
+  <link rel="stylesheet" href="css/style.css?v=2.2">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <script>
+    // Force clear old service workers and cache to ensure immediate updates
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        for (const r of regs) r.unregister();
+      });
+    }
+    if ('caches' in window) {
+      caches.keys().then(names => {
+        for (const name of names) caches.delete(name);
+      });
+    }
+  </script>
 </head>
 <body>
 
@@ -75,6 +89,26 @@
   </header>
 
   <!-- ====================================================================
+       Persistent Room Strip (Always Visible)
+       ==================================================================== -->
+  <div class="room-strip" id="room-strip">
+    <div class="room-strip-left">
+      <span class="strip-label">Room:</span>
+      <span class="strip-code" id="strip-room-code">Not in Room</span>
+      <button class="btn-strip btn-strip-accent" id="strip-btn-create">Create Room</button>
+      <button class="btn-strip" id="strip-btn-copy" style="display: none;">📋 Copy Link</button>
+      <button class="btn-strip" id="strip-btn-pick-file">📁 Select File</button>
+    </div>
+    <div class="room-strip-right">
+      <div class="strip-status">
+        <span class="status-dot" id="status-dot"></span>
+        <span id="status-text">Disconnected</span>
+        <span class="ping-display" id="ping-display"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================================================================
        Main Player Workspace
        ==================================================================== -->
   <main class="main-container">
@@ -82,6 +116,33 @@
       <div class="video-wrapper" id="video-wrapper">
         <!-- Main HTML5 Video Element -->
         <video id="main-video" playsinline></video>
+
+        <!-- Empty Player Prompt (When no movie loaded) -->
+        <div class="empty-player-prompt" id="empty-player-prompt">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <h3>No Movie Loaded</h3>
+          <p>Tap below to select your downloaded movie file from your phone or PC</p>
+          <button class="btn btn-primary" id="btn-prompt-pick" style="padding: 0.65rem 1.3rem; font-size: 0.9rem; font-weight: 700;">
+            📁 Choose Movie File
+          </button>
+        </div>
+
+        <!-- Big Center "Ready to Play" Card -->
+        <div class="center-play-overlay hidden" id="center-play-overlay">
+          <button class="giant-play-btn" id="btn-giant-play" title="Start Watching">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <polygon points="6 3 20 12 6 21 6 3"/>
+            </svg>
+          </button>
+          <div class="center-play-info">
+            <div class="center-movie-title" id="center-movie-title">Movie Ready</div>
+            <div class="center-movie-hint" id="center-movie-hint">Tap Play to Start Watching with Friend</div>
+          </div>
+        </div>
 
         <!-- Big Center Gesture Indicator -->
         <div class="gesture-indicator" id="center-gesture-indicator"></div>
@@ -363,14 +424,14 @@
     </div>
   </div>
 
-  <!-- Scripts -->
-  <script src="js/peerjs.min.js"></script>
-  <script src="js/srt-parser.js"></script>
-  <script src="js/sync.js"></script>
-  <script src="js/voice.js"></script>
-  <script src="js/chat.js"></script>
-  <script src="js/player.js"></script>
-  <script src="js/app.js"></script>
+  <!-- Scripts (Cache Busted) -->
+  <script src="js/peerjs.min.js?v=2.2"></script>
+  <script src="js/srt-parser.js?v=2.2"></script>
+  <script src="js/sync.js?v=2.2"></script>
+  <script src="js/voice.js?v=2.2"></script>
+  <script src="js/chat.js?v=2.2"></script>
+  <script src="js/player.js?v=2.2"></script>
+  <script src="js/app.js?v=2.2"></script>
 
   <!-- PWA Service Worker Registration -->
   <script>
