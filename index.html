@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0b10">
+  <meta name="description" content="Watch Together by Likhon — Synced cross-platform local movie player with voice call and chat">
+  <title>Watch Together by Likhon</title>
+  
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='25' fill='%236366f1'/><polygon points='38,28 72,50 38,72' fill='white'/></svg>">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- ====================================================================
+       App Header & Quick Controls
+       ==================================================================== -->
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24">
+          <path d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6zm6 3.5v5l5-2.5-5-2.5z"/>
+        </svg>
+      </div>
+      <span class="brand-title">Watch Together</span>
+      <span class="brand-author">by Likhon</span>
+    </div>
+
+    <!-- Status & Room Badge -->
+    <div class="connection-badge">
+      <div class="status-dot" id="status-dot"></div>
+      <span id="status-text">Not Connected</span>
+      <span class="ping-display" id="ping-display"></span>
+    </div>
+
+    <!-- Header Actions (Voice, Room, Chat) -->
+    <div class="header-actions">
+      <!-- Voice Call Widget -->
+      <div class="voice-bar">
+        <button class="voice-btn" id="btn-voice-toggle">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="23"/>
+            <line x1="8" y1="23" x2="16" y2="23"/>
+          </svg>
+          <span>Join Voice</span>
+        </button>
+        <button class="voice-btn muted" id="btn-voice-mute" style="display: none;">
+          Mute Mic
+        </button>
+        <div class="speaking-pulse" id="voice-speaking-pulse"></div>
+      </div>
+
+      <!-- Change Video / Room Button -->
+      <button class="btn" id="btn-open-setup" title="Change Video or Room">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+
+      <!-- Toggle Chat Drawer Button -->
+      <button class="btn btn-icon-only" id="chat-toggle-btn" title="Open Chat" style="position: relative;">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+        <span class="badge-unread" id="chat-unread-badge">0</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ====================================================================
+       Main Player Workspace
+       ==================================================================== -->
+  <main class="main-container">
+    <div class="player-section">
+      <div class="video-wrapper" id="video-wrapper">
+        <!-- Main HTML5 Video Element -->
+        <video id="main-video" playsinline></video>
+
+        <!-- Big Center Gesture Indicator -->
+        <div class="gesture-indicator" id="center-gesture-indicator"></div>
+
+        <!-- Mobile Touch Double-Tap Zones -->
+        <div class="tap-zone tap-zone-left" id="tap-zone-left">
+          <div class="tap-ripple" id="tap-ripple-left">-10s</div>
+        </div>
+        <div class="tap-zone tap-zone-right" id="tap-zone-right">
+          <div class="tap-ripple" id="tap-ripple-right">+10s</div>
+        </div>
+
+        <!-- Custom Subtitles Rendering -->
+        <div class="subtitles-container" id="subtitles-container">
+          <div class="subtitle-text" id="subtitle-text" style="display: none;"></div>
+        </div>
+
+        <!-- Format / Codec Warning Banner -->
+        <div id="format-warning-banner" style="display: none; position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(239, 68, 68, 0.9); color: white; padding: 10px 18px; border-radius: 8px; font-size: 0.85rem; z-index: 25; text-align: center; max-width: 90%;"></div>
+
+        <!-- Custom Video Controls Overlay -->
+        <div class="controls-overlay" id="controls-overlay">
+          <!-- Timeline / Smooth Scrub Bar -->
+          <div class="timeline-container" id="timeline-container">
+            <div class="timeline-tooltip" id="timeline-tooltip">00:00</div>
+            <div class="timeline-track" id="timeline-track">
+              <div class="timeline-buffer" id="timeline-buffer"></div>
+              <div class="timeline-progress" id="timeline-progress">
+                <div class="timeline-thumb"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Buttons Bar -->
+          <div class="controls-row">
+            <!-- Left Controls -->
+            <div class="controls-left">
+              <!-- Play / Pause -->
+              <button class="ctrl-btn" id="btn-play-pause" title="Play / Pause (Space)">
+                <svg class="icon-play" viewBox="0 0 24 24" fill="currentColor">
+                  <polygon points="5 3 19 12 5 21 5 3"/>
+                </svg>
+                <svg class="icon-pause" viewBox="0 0 24 24" fill="currentColor" style="display: none;">
+                  <rect x="6" y="4" width="4" height="16"/>
+                  <rect x="14" y="4" width="4" height="16"/>
+                </svg>
+              </button>
+
+              <!-- Skip -10s -->
+              <button class="ctrl-btn" id="btn-skip-back" title="Rewind 10s (J / Left Arrow)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
+                </svg>
+              </button>
+
+              <!-- Skip +10s -->
+              <button class="ctrl-btn" id="btn-skip-forward" title="Forward 10s (L / Right Arrow)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M13 17l5-5-5-5M6 17l5-5-5-5"/>
+                </svg>
+              </button>
+
+              <!-- Volume & Mute -->
+              <div class="volume-control">
+                <button class="ctrl-btn" id="btn-volume" title="Mute / Unmute (M)">
+                  <svg class="icon-vol-high" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                  </svg>
+                  <svg class="icon-vol-mute" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                    <line x1="23" y1="9" x2="17" y2="15"/>
+                    <line x1="17" y1="9" x2="23" y2="15"/>
+                  </svg>
+                </button>
+                <input type="range" class="volume-slider" id="volume-slider" min="0" max="1" step="0.05" value="1">
+              </div>
+
+              <!-- Time Display -->
+              <div class="time-display" id="time-display">
+                <span class="time-current">00:00</span> / 00:00
+              </div>
+            </div>
+
+            <!-- Right Controls -->
+            <div class="controls-right">
+              <!-- Playback Speed Dropdown -->
+              <div class="menu-container">
+                <button class="ctrl-btn" id="btn-speed" title="Playback Speed">1x</button>
+                <div class="popup-menu" id="speed-menu">
+                  <div class="menu-header">Playback Speed</div>
+                  <button class="menu-item" data-speed="0.5">0.5x</button>
+                  <button class="menu-item" data-speed="0.75">0.75x</button>
+                  <button class="menu-item active" data-speed="1.0">Normal (1x)</button>
+                  <button class="menu-item" data-speed="1.25">1.25x</button>
+                  <button class="menu-item" data-speed="1.5">1.5x</button>
+                  <button class="menu-item" data-speed="2.0">2x</button>
+                </div>
+              </div>
+
+              <!-- Subtitles Menu -->
+              <div class="menu-container">
+                <button class="ctrl-btn" id="btn-subtitles" title="Subtitles (C)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="4" width="20" height="16" rx="2"/>
+                    <path d="M7 15h3M14 15h3M7 11h10"/>
+                  </svg>
+                </button>
+                <div class="popup-menu" id="subtitles-menu" style="min-width: 170px;">
+                  <div class="menu-header">Subtitles</div>
+                  <button class="menu-item active" id="sub-toggle">Subtitles: ON</button>
+                  <div class="menu-divider"></div>
+                  <div class="menu-header">Subtitle Sync Delay</div>
+                  <button class="menu-item" id="sub-delay-minus">- 250ms (Earlier)</button>
+                  <button class="menu-item" id="sub-delay-plus">+ 250ms (Later)</button>
+                  <button class="menu-item" id="sub-delay-reset">Reset: <span id="sub-offset-display">0ms</span></button>
+                </div>
+              </div>
+
+              <!-- Audio Tracks Menu -->
+              <div class="menu-container">
+                <button class="ctrl-btn" id="btn-audio" title="Audio Tracks" style="display: none;">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 18V5l12-2v13"/>
+                    <circle cx="6" cy="18" r="3"/>
+                    <circle cx="18" cy="16" r="3"/>
+                  </svg>
+                </button>
+                <div class="popup-menu" id="audio-menu">
+                  <div class="menu-header">Audio Tracks</div>
+                </div>
+              </div>
+
+              <!-- Fullscreen Button -->
+              <button class="ctrl-btn" id="btn-fullscreen" title="Fullscreen (F)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================================================================
+         Side Drawer: Live Text Chat
+         ================================================================== -->
+    <aside class="chat-drawer closed" id="chat-drawer">
+      <div class="chat-header">
+        <span>Room Chat</span>
+        <button class="btn btn-icon-only" id="chat-close-btn">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="chat-messages" id="chat-messages">
+        <div class="chat-bubble peer">
+          <div class="chat-sender">System</div>
+          <div class="chat-text">Welcome to Watch Together by Likhon! Messages sent here sync peer-to-peer with your friend.</div>
+          <div class="chat-time">Now</div>
+        </div>
+      </div>
+      <div class="chat-input-row">
+        <input type="text" class="text-input" id="chat-input" placeholder="Type a message..." autocomplete="off">
+        <button class="btn btn-primary" id="chat-send-btn">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="22" y1="2" x2="11" y2="13"/>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+        </button>
+      </div>
+    </aside>
+  </main>
+
+  <!-- ====================================================================
+       Setup Modal Overlay (Select Media & Join Room)
+       ==================================================================== -->
+  <div class="setup-overlay" id="setup-overlay">
+    <div class="setup-card">
+      <h1 class="setup-title">Watch Together</h1>
+      <p class="setup-subtitle">Engineered by Likhon for synced movie watching across PC & Android with 0 MB streaming data.</p>
+
+      <!-- Step 1: Select Video Source -->
+      <div class="setup-step">
+        <div class="setup-step-header">
+          <span class="step-number">1</span>
+          <span>Choose Your Movie File</span>
+        </div>
+
+        <div class="tab-group">
+          <button class="tab-btn active" id="tab-local">Local Offline File (0 Data)</button>
+          <button class="tab-btn" id="tab-url">Direct Stream URL</button>
+        </div>
+
+        <!-- Local File Tab -->
+        <div id="panel-local">
+          <div class="dropzone" id="dropzone">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            <p><strong>Click or Drag & Drop</strong> your downloaded movie file here</p>
+            <span>Supports MP4, WebM, MKV (Plays directly from PC/Android storage)</span>
+          </div>
+          <input type="file" id="file-input" accept="video/*,.mkv,.mp4,.webm" style="display: none;">
+        </div>
+
+        <!-- URL Stream Tab -->
+        <div id="panel-url" style="display: none;">
+          <div class="input-group">
+            <input type="url" class="text-input" id="url-input" placeholder="Paste direct download / stream link (MP4, etc.)">
+            <button class="btn btn-primary" id="btn-load-url">Load</button>
+          </div>
+        </div>
+
+        <!-- Loaded File Info Badge -->
+        <div class="file-info-badge" id="file-info-badge">
+          <span id="file-name-text">No file loaded</span>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 6L9 17l-5-5"/>
+          </svg>
+        </div>
+
+        <!-- Subtitle File Loader -->
+        <div style="margin-top: 0.75rem; display: flex; align-items: center; justify-content: space-between;">
+          <span style="font-size: 0.8rem; color: var(--text-secondary);">Subtitles (.srt / .vtt):</span>
+          <label class="btn" style="padding: 0.3rem 0.6rem; font-size: 0.75rem; cursor: pointer;">
+            Choose Subtitle File
+            <input type="file" id="sub-file-input" accept=".srt,.vtt" style="display: none;">
+          </label>
+        </div>
+      </div>
+
+      <!-- Step 2: Room Creation & Connection -->
+      <div class="setup-step">
+        <div class="setup-step-header">
+          <span class="step-number">2</span>
+          <span>Connect With Your Friend</span>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+          <!-- Host Room -->
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="btn btn-gradient" id="btn-create-room" style="flex: 1;">Create New Room</button>
+            <button class="btn" id="btn-copy-link" title="Copy Invite Link">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+              <span>Copy Link</span>
+            </button>
+          </div>
+
+          <!-- Join Existing Room -->
+          <div class="input-group">
+            <input type="text" class="text-input" id="input-room-code" placeholder="Enter 6-character Room Code">
+            <button class="btn btn-primary" id="btn-join-room">Join Room</button>
+          </div>
+
+          <div style="font-size: 0.75rem; color: var(--text-muted); text-align: center;">
+            Current Room: <strong id="room-id-display" style="color: var(--accent-secondary);">None</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dismiss Button -->
+      <button class="btn btn-primary" id="btn-dismiss-setup" style="width: 100%; padding: 0.75rem;">
+        Start Watching
+      </button>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/peerjs.min.js"></script>
+  <script src="js/srt-parser.js"></script>
+  <script src="js/sync.js"></script>
+  <script src="js/voice.js"></script>
+  <script src="js/chat.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/app.js"></script>
+
+  <!-- PWA Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(err => console.log('SW registration error:', err));
+    }
+  </script>
+</body>
+</html>
