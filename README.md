@@ -1,95 +1,176 @@
 # 🎬 Watch Together by Likhon
 
-A modern, high-performance, cross-platform movie synchronization suite designed to watch downloaded offline movies (or direct video links) together in real-time with **zero video streaming bandwidth**.
+> **Synchronized local movie streaming suite with 0 MB video data transfer, WebRTC peer-to-peer sync, YouTube Vanced swipe gestures, dual-audio dub switching, and live voice/chat.**
 
-Engineered for **Windows PC** and **Android phones**, with **$0 hosting cost**.
-
----
-
-## 🌟 Key Highlights
-
-- **0 MB Streaming Bandwidth During Watching**: Both users select their downloaded local file. Video plays natively from device storage (SSD or phone storage) with pristine quality and zero buffering.
-- **Cross-Platform**: Works smoothly on **Windows PC** and **Android** (via browser or "Add to Home Screen" PWA).
-- **Ultra-Low Latency Sync (WebRTC via PeerJS)**: Play, Pause, Seek, and Playback Speed actions sync peer-to-peer in $<50\text{ms}$.
-- **Built-in Peer-to-Peer Voice Call**: One-tap voice call with mic mute/unmute and live speech activity visualization.
-- **Built-in Live Text Chat**: Slide-out drawer with audio notifications synthesized via the Web Audio API.
-- **Full Media Player Controls**:
-  - Smooth timeline scrubbing with time preview tooltips.
-  - Synced playback speed ($0.5\times$, $0.75\times$, $1\times$, $1.25\times$, $1.5\times$, $2\times$).
-  - Subtitle loader (`.srt` and `.vtt`) with on-the-fly $\pm 250\text{ms}$ delay offset adjustment.
-  - Multi-track audio detection where supported by browser.
-  - PC keyboard shortcuts & mobile double-tap seek gestures.
-- **Bonus Windows Tool (`potplayer_sync.py`)**: For heavy 4K HDR HEVC 10-bit MKVs, a dedicated Windows tool connects directly to **Daum PotPlayer** to sync native desktop playback!
+[![Live Web App](https://img.shields.io/badge/Live_Demo-GitHub_Pages-6366f1?style=for-the-badge&logo=github)](https://likhonmain.github.io/watch-together-by-likhon/)
+[![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Windows_PC_|_Android-emerald?style=for-the-badge)](https://likhonmain.github.io/watch-together-by-likhon/)
+[![Cost](https://img.shields.io/badge/Hosting_Cost-$0_Forever-gold?style=for-the-badge)](https://likhonmain.github.io/watch-together-by-likhon/)
 
 ---
 
-## 🚀 How to Run Locally
+## 📖 Overview
 
-You can run Watch Together locally in 10 seconds without installing Node.js:
+**Watch Together by Likhon** solves a major problem with modern co-watching apps: **buffering, quality degradation, and high data consumption**.
 
-```powershell
-# In this directory:
-python -m http.server 8080
-```
+Instead of uploading and re-streaming gigabytes of heavy video through a central cloud server:
+1. Both users keep their downloaded movie file (`.mkv`, `.mp4`, `.webm`) locally on their device (SSD or phone storage).
+2. The browser plays the video natively from local disk at maximum quality (1080p/4K) with **0 MB video bandwidth consumed**.
+3. A low-overhead WebRTC peer-to-peer connection (`< 50ms` latency) synchronizes **Play**, **Pause**, **Seek**, and **Playback Speed** in millisecond lockstep.
 
-Now open:
-- On your PC: `http://localhost:8080`
-- On your Android phone (on same Wi-Fi): `http://<YOUR_PC_LOCAL_IP>:8080`
+Designed and optimized specifically for **Windows PC Chrome** and **Android Mobile Browsers / PWA**.
 
 ---
 
-## ☁️ How to Deploy for 100% Free ($0 Forever)
+## 🌟 Key Features
 
-You can host Watch Together for free so you and your friend can access it anywhere from cellular data or different Wi-Fi networks:
+### 1. 0 MB Video Data Usage
+* Video files are loaded via the HTML5 File API directly from local device storage.
+* No video data is ever sent to or processed by a remote server.
+* Ultra-fast scrubbing with zero buffering delays.
 
-### Option A: Vercel (Recommended — Takes 1 Minute)
-1. Go to [vercel.com](https://vercel.com) (free account).
-2. Drag and drop this project folder into Vercel, or push to GitHub and import the repo.
-3. Vercel will give you a free instant URL: `https://watch-together-likhon.vercel.app`.
+### 2. 3-Digit Room Codes & Instant Invite Links
+* Connect with a clean, simple **3-digit room code** (e.g. `582`).
+* Or click **Copy Invite Link** to share a direct link (e.g. `https://...?room=582`) that automatically connects your friend with one tap.
+* Dual STUN/TURN fallback servers guarantee reliable NAT traversal across mobile cellular networks (4G/5G) and home Wi-Fi.
 
-### Option B: GitHub Pages
-1. Push this folder to a GitHub repository.
-2. In the repository settings $\rightarrow$ **Pages** $\rightarrow$ select `main` branch $\rightarrow$ click **Save**.
-3. Your site will be live at `https://<your-username>.github.io/<repo-name>/`.
+### 3. YouTube Vanced-Style Swipe Gestures (v3.9)
+* **Left-Side Vertical Drag (Brightness)**:
+  * Adjusts brightness from `0%` to `100%`.
+  * **Non-Destructive Dimming Scrim**: Uses a dedicated `#virtual-brightness-scrim` overlay layer that preserves original contrast, color fidelity, and black levels without blowing out whites.
+  * Shows a frosted-glass HUD with dynamic weather icons (`☀️` / `🌤️` / `🌙`), smooth vertical progress fill bar, and percentage.
+* **Right-Side Vertical Drag (Volume)**:
+  * Adjusts volume from `0%` to `100%`.
+  * **Acoustic Logarithmic Curve**: Uses Stevens' acoustic power law ($\text{volume} = (\text{level}/100)^{2.2}$) to match human hearing perception. Eliminates the sudden 10% volume blast and makes volume glide smoothly to the human ear.
+  * Shows a frosted-glass HUD with dynamic speaker icons (`🔇` / `🔉` / `🔊`), smooth vertical fill bar, and percentage.
+* **Fullscreen Virtual Environment Isolation**:
+  * Adjustments live in a temporary virtual session during fullscreen.
+  * Exiting fullscreen automatically reverts brightness (transparent scrim) and volume (100% baseline) back to default device settings.
+* **Continuous Frame Tracking & Dampening**:
+  * Dragging is tracked frame-by-frame (`0.35%` change per pixel) for a tactile, silky-smooth gliding feel with zero jumps.
+
+### 4. 5-Second Forward & Backward Skip
+* **Mobile Double-Tap**:
+  * Double-tap Left: Rewinds **5 seconds** with `-5s` animated ripple.
+  * Double-tap Right: Fast-forwards **5 seconds** with `+5s` animated ripple.
+* **Center On-Screen Controls**: Dedicated `[<< 5s]` and `[>> 5s]` quick skip buttons.
+* **Player Bar & Hotkeys**: Bottom bar buttons and keyboard hotkeys (`Left`/`Right` and `J`/`L`) seek by exactly **5 seconds**.
+
+### 5. Audio Track Selection & Multi-Dub Switcher
+* **Dual-Audio Channel Router**:
+  * Many downloaded dual-audio releases encode Language 1 (e.g. Hindi) on the Left channel and Language 2 (e.g. English) on the Right channel.
+  * Features 1-tap channel routing powered by Web Audio API `ChannelSplitterNode` and `ChannelMergerNode`:
+    * `[ 🎧 Stereo ]`: Standard stereo across both speakers/earphones.
+    * `[ Left (Dub 1) ]`: Isolates the Left channel and routes it to **both** ears.
+    * `[ Right (Dub 2) ]`: Isolates the Right channel and routes it to **both** ears.
+* **Load External Dub Audio Track (`.mp3`, `.m4a`, `.aac`, `.wav`, `.ogg`)**:
+  * Select an external dub file to play in lockstep with the video.
+  * Automatically coordinates `play`, `pause`, `seek`, and `playbackRate`.
+  * Includes an **Audio Sync Delay Offset** (`-250ms`, `+250ms`, `Reset`) to synchronize dialogue lips precisely.
+* **Native Audio Tracks**:
+  * Automatically detects and lists multiple embedded audio streams if exposed by the browser.
+
+### 6. Synchronized Subtitles (.srt / .vtt)
+* Load external subtitle files on either PC or mobile.
+* On-the-fly **Delay Offset Adjustment** (`-250ms`, `+250ms`, `Reset`) with live millisecond badge display.
+* Layered **above** the virtual brightness scrim, ensuring subtitles remain sharp, crisp, and readable even when the screen is dimmed for night viewing.
+
+### 7. Multi-Tab Mobile Experience & Responsive Desktop UI
+* **Mobile Bottom Panel (3 Dynamic Tabs)**:
+  * **Tab 1: Live Chat (`💬`)**: Real-time synchronized chat stream, enter-to-send, unread message badges, and pleasant audio chimes.
+  * **Tab 2: Audio & Subtitles (`🎛️`)**: Playback speed pills ($0.75\times$ to $2.0\times$), subtitle offset controls, dual-audio channel selector, and external dub track loader.
+  * **Tab 3: Users in Room (`👥`)**: Connected room peers list, connection status badge, and an inline **Editable Display Name** with local storage persistence.
+* **Desktop Layout**:
+  * Cinema player layout with sticky modular sidebar cards:
+    * Card 1: Room Connection, 3-Digit Code input, and Live User List.
+    * Card 2: Movie File selector, Subtitle delay controls, and Dual-Audio Dub switcher.
+    * Card 3: Real-time Live Chat stream with quick composer.
+
+### 8. Built-in WebRTC Voice Chat
+* 1-tap peer-to-peer voice calling directly through the browser.
+* Microphone mute/unmute toggle.
+* Real-time audio waveform activity indicator.
+
+### 9. Progressive Web App (PWA) Support
+* Installable as a standalone app on Android via **"Add to Home Screen"**.
+* Launches in pure full-screen mode without browser address bars or navigation clutter.
+* Offline asset caching via Service Worker.
+
+### 10. Companion Desktop Tool: Daum PotPlayer Sync (`potplayer_sync.py`)
+* For heavy desktop 4K HDR HEVC 10-bit Dolby Vision MKV movies that browsers cannot decode natively.
+* Connects directly to **Daum PotPlayer** on Windows via Windows IPC messages to synchronize native playback in millisecond precision.
 
 ---
 
-## 🎮 Controls & Shortcuts
+## 🎮 Controls & Shortcuts Reference
 
 ### Desktop Keyboard Shortcuts:
 | Key | Action |
 | :--- | :--- |
 | `Space` / `K` | Play / Pause |
 | `Left Arrow` / `Right Arrow` | Seek $\pm 5$ seconds |
-| `J` / `L` | Seek $\pm 10$ seconds |
-| `Up Arrow` / `Down Arrow` | Volume $\pm 10\%$ |
+| `J` / `L` | Seek $\pm 5$ seconds |
+| `Up Arrow` / `Down Arrow` | Smooth Acoustic Volume $\pm 10\%$ (with Vanced HUD) |
 | `M` | Mute / Unmute |
-| `F` | Fullscreen Toggle |
-| `>` / `<` | Increase / Decrease Playback Speed |
+| `F` | Toggle Fullscreen |
+| `>` / `<` (Shift + `.` / `,`) | Increase / Decrease Playback Speed |
 | `C` | Toggle Subtitles On / Off |
 
 ### Mobile Touch Gestures (Android):
 | Gesture | Action |
 | :--- | :--- |
-| **Double-tap Left side** | Seek backward $-10\text{s}$ with ripple animation |
-| **Double-tap Right side** | Seek forward $+10\text{s}$ with ripple animation |
+| **Swipe Up / Down on Left Half** | Smooth Video Brightness ($0\%$ to $100\%$) with Vanced HUD |
+| **Swipe Up / Down on Right Half** | Smooth Acoustic Volume ($0\%$ to $100\%$) with Vanced HUD |
+| **Double-tap Left Side** | Seek backward $-5\text{s}$ with ripple animation |
+| **Double-tap Right Side** | Seek forward $+5\text{s}$ with ripple animation |
 | **Single-tap Screen** | Toggle control overlay on / off |
-| **Add to Home Screen** | Installs as a standalone full-screen app |
+| **Add to Home Screen** | Installs as a standalone full-screen Android app |
 
 ---
 
-## 🖥️ Bonus Tool: Dedicated PotPlayer Synchronizer (`potplayer_sync.py`)
+## 🚀 How to Run Locally
 
-If you both watch on Windows PC and have heavy files like `Supergirl 2026 Dual ORG 4K HDR DV HEVC.mkv` (4K HDR Dolby Vision 10-bit HEVC):
+You can run Watch Together locally in 5 seconds with zero dependencies (no Node.js required):
 
-1. Make sure PotPlayer is installed on both PCs.
+```powershell
+# Inside this project directory:
+python -m http.server 8080
+```
+
+Open your browser:
+* **On your PC**: `http://localhost:8080`
+* **On your Android Phone (same Wi-Fi)**: `http://<YOUR_PC_IP>:8080`
+
+---
+
+## ☁️ Free Cloud Deployment ($0 Forever)
+
+### Option A: GitHub Pages (Currently Live)
+1. Push this repository to GitHub.
+2. Navigate to **Settings** $\rightarrow$ **Pages**.
+3. Under **Build and deployment**, select `Deploy from a branch` $\rightarrow$ `main` branch $\rightarrow$ `/ (root)`.
+4. Your web app will be live at: `https://<your-username>.github.io/<repo-name>/`
+
+### Option B: Vercel
+1. Go to [vercel.com](https://vercel.com).
+2. Import your GitHub repository.
+3. Leave build settings as default (Static Site) and click **Deploy**.
+
+---
+
+## 🖥️ Companion Tool: PotPlayer Sync (`potplayer_sync.py`)
+
+For high-bitrate 4K HDR HEVC 10-bit Dolby Vision files on Windows:
+
+1. Install [Daum PotPlayer](https://potplayer.daum.net/) on both PCs.
 2. Open the movie file in PotPlayer on both PCs.
-3. Run the sync tool on both PCs:
+3. Run the sync bridge:
    ```powershell
    python potplayer_sync.py
    ```
-4. Host clicks **"Host Room"**, friend enters Host's IP and clicks **"Join Friend's Room"**.
-5. When anyone presses Spacebar, pauses, or seeks in PotPlayer, both PotPlayers stay in millisecond lockstep!
+4. User A clicks **Host Room** (shares IP).
+5. User B enters Host IP and clicks **Join Friend's Room**.
+6. Play, pause, and seek commands in PotPlayer stay synchronized peer-to-peer!
 
 ---
 
@@ -97,22 +178,28 @@ If you both watch on Windows PC and have heavy files like `Supergirl 2026 Dual O
 
 ```
 Watch_together/
-├── index.html            # Main UI, player viewport, modals, chat drawer
-├── manifest.json         # PWA configuration for Android standalone mode
+├── index.html            # Core semantic markup, player viewport, HUDs, modular panels
+├── manifest.json         # PWA configuration for Android standalone installation
 ├── sw.js                 # Service worker for offline asset caching
 ├── css/
-│   └── style.css         # Cinema dark theme & mobile responsive design
+│   └── style.css         # Modern cinema dark theme, Vanced HUD styles, responsive layouts
 ├── js/
 │   ├── peerjs.min.js     # Vendored WebRTC P2P signaling library
-│   ├── srt-parser.js     # Subtitle parser (SRT/VTT) with delay offset sync
-│   ├── sync.js           # WebRTC DataChannel synchronization engine
-│   ├── voice.js          # WebRTC MediaStream voice chat & speech visualizer
-│   ├── chat.js           # Live chat drawer with synthesized chime audio
-│   ├── player.js         # Custom video player engine, timeline, hotkeys
-│   └── app.js            # Main coordinator & UI event glue
+│   ├── srt-parser.js     # Client-side subtitle parser (SRT/VTT) with delay offset sync
+│   ├── sync.js           # WebRTC DataChannel synchronization engine (playback, seek, speed)
+│   ├── voice.js          # WebRTC MediaStream voice chat & speech activity visualizer
+│   ├── chat.js           # Live synchronized text chat with synthesized audio chimes
+│   ├── player.js         # Custom video player engine, Vanced gestures, Web Audio router, hotkeys
+│   └── app.js            # Main coordinator, tab switcher, room code logic & UI glue
 ├── potplayer_sync.py     # Standalone Windows synchronizer for Daum PotPlayer
-└── README.md             # Complete documentation and deployment guide
+└── README.md             # Project documentation and architecture guide
 ```
+
+---
+
+## 📄 License
+
+This project is open-source and available under the [MIT License](LICENSE).
 
 ---
 *Crafted with precision by Likhon.*
