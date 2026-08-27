@@ -71,7 +71,11 @@ class VideoPlayer {
     this.audioMerger = null;
     this.mediaSourceNode = null;
     this.dubOffsetMs = 0;
-    this.brightness = 1.0;
+
+    // Vanced Virtual Environment (Isolated Fullscreen Controls)
+    this.brightnessScrim = document.getElementById('virtual-brightness-scrim');
+    this.virtualBrightnessLevel = 100; // 0 to 100%
+    this.virtualVolumeLevel = 100; // 0 to 100%
     this.vancedTimeout = null;
 
     // State
@@ -93,6 +97,7 @@ class VideoPlayer {
     this._bindKeyboardShortcuts();
     this._bindMobileGestures();
     this._bindSyncEvents();
+    this._bindFullscreenEvents();
 
     if (this.btnGiantPlay) {
       this.btnGiantPlay.addEventListener('click', (e) => {
@@ -333,9 +338,7 @@ class VideoPlayer {
     if (this.volumeSlider) {
       this.volumeSlider.addEventListener('input', (e) => {
         const val = parseFloat(e.target.value);
-        this.video.volume = val;
-        this.video.muted = (val === 0);
-        this._updateVolumeIcon();
+        this.setVirtualVolume(val * 100);
       });
     }
 
@@ -600,59 +603,50 @@ class VideoPlayer {
   _bindMobileGestures() {
     let touchStartX = 0;
     let touchStartY = 0;
+    let lastTouchY = 0;
     let isSwiping = false;
     let isLeftSide = false;
-    let initialVolume = 1.0;
-    let initialBrightness = 1.0;
 
     const onTouchStart = (e) => {
       if (e.touches.length !== 1) return;
       const touch = e.touches[0];
       touchStartX = touch.clientX;
       touchStartY = touch.clientY;
+      lastTouchY = touch.clientY;
       isSwiping = false;
 
       const rect = this.videoWrapper ? this.videoWrapper.getBoundingClientRect() : { left: 0, width: window.innerWidth, height: window.innerHeight };
       isLeftSide = (touchStartX < rect.left + rect.width / 2);
-      initialVolume = this.video ? this.video.volume : 1.0;
-      initialBrightness = this.brightness || 1.0;
     };
 
     const onTouchMove = (e) => {
       if (e.touches.length !== 1) return;
       const touch = e.touches[0];
       const deltaX = Math.abs(touch.clientX - touchStartX);
-      const deltaY = touchStartY - touch.clientY; // upward drag is positive
+      const totalDeltaY = touchStartY - touch.clientY; // upward drag is positive
+      const stepDeltaY = lastTouchY - touch.clientY; // frame delta
+      lastTouchY = touch.clientY;
 
       if (!isSwiping) {
-        if (Math.abs(deltaY) > 10 && Math.abs(deltaY) > deltaX * 1.2) {
+        if (Math.abs(totalDeltaY) > 8 && Math.abs(totalDeltaY) > deltaX * 1.1) {
           isSwiping = true;
         }
       }
 
       if (isSwiping) {
         if (e.cancelable) e.preventDefault();
-        const rect = this.videoWrapper ? this.videoWrapper.getBoundingClientRect() : { height: 300 };
-        const factor = deltaY / (rect.height * 0.7);
+
+        // Smooth continuous dampening (0.35% per pixel dragged)
+        const stepChange = stepDeltaY * 0.35;
 
         if (isLeftSide) {
-          // Left side: Brightness (10% to 200%)
-          const newB = Math.max(0.1, Math.min(2.0, initialBrightness + factor * 1.5));
-          this.setBrightness(newB);
-          this._showVancedBrightness(newB);
+          // Left side: Brightness (0% to 100%)
+          this.setVirtualBrightness(this.virtualBrightnessLevel + stepChange);
+          this._showVancedBrightness(Math.round(this.virtualBrightnessLevel));
         } else {
-          // Right side: Volume (0% to 100%)
-          const newV = Math.max(0.0, Math.min(1.0, initialVolume + factor));
-          if (this.video) {
-            this.video.volume = newV;
-            this.video.muted = (newV === 0);
-          }
-          if (this.externalAudioFile && this.externalAudio) {
-            this.externalAudio.volume = newV;
-          }
-          this._updateVolumeIcon();
-          if (this.volumeSlider) this.volumeSlider.value = newV;
-          this._showVancedVolume(newV);
+          // Right side: Volume with Acoustic Logarithmic Curve (0% to 100%)
+          this.setVirtualVolume(this.virtualVolumeLevel + stepChange);
+          this._showVancedVolume(Math.round(this.virtualVolumeLevel));
         }
       }
     };
@@ -845,12 +839,9 @@ class VideoPlayer {
   }
 
   adjustVolume(delta) {
-    let newVol = Math.max(0, Math.min(1, this.video.volume + delta));
-    this.video.volume = newVol;
-    this.video.muted = (newVol === 0);
-    if (this.volumeSlider) this.volumeSlider.value = newVol;
-    this._updateVolumeIcon();
-    this._showGestureAnimation(`Vol: ${Math.round(newVol * 100)}%`);
+    const change = delta * 100;
+    this.setVirtualVolume(this.virtualVolumeLevel + change);
+    this._showVancedVolume(Math.round(this.virtualVolumeLevel));
   }
 
   toggleMute() {
@@ -874,25 +865,72 @@ class VideoPlayer {
   }
 
   /* ------------------------------------------------------------------------
-     YouTube Vanced Gesture HUD Helpers
+     YouTube Vanced Virtual Environment & Swipe Gestures
      ------------------------------------------------------------------------ */
-  setBrightness(val) {
-    this.brightness = Math.max(0.1, Math.min(2.0, val));
+  _bindFullscreenEvents() {
+    const onFsChange = () => {
+      const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+      if (!isFs) {
+        // Vanced Exiting Fullscreen Lifecycle:
+        // Automatically revert virtual brightness scrim and volume back to normal baseline!
+        this.resetVirtualEnvironment();
+      }
+    };
+    document.addEventListener('fullscreenchange', onFsChange);
+    document.addEventListener('webkitfullscreenchange', onFsChange);
+  }
+
+  setVirtualBrightness(level) {
+    this.virtualBrightnessLevel = Math.max(0, Math.min(100, level));
+    if (this.brightnessScrim) {
+      // 100% -> opacity = 0 (clean original video)
+      // 0% -> opacity = 0.92 (deep cinema dark)
+      const opacity = (1 - (this.virtualBrightnessLevel / 100)) * 0.92;
+      this.brightnessScrim.style.opacity = opacity.toFixed(3);
+    }
+    // Clear any residual CSS filters so colors never wash out!
     if (this.video) {
-      this.video.style.filter = `brightness(${this.brightness})`;
+      this.video.style.filter = '';
     }
   }
 
-  _showVancedBrightness(brightnessVal) {
+  setVirtualVolume(level) {
+    this.virtualVolumeLevel = Math.max(0, Math.min(100, level));
+    const normalized = this.virtualVolumeLevel / 100;
+    // Acoustic Logarithmic Power Curve: Math.pow(normalized, 2.2)
+    // Matches human hearing perception smoothly from whisper quiet to full power!
+    const acousticVol = Math.pow(normalized, 2.2);
+
+    if (this.video) {
+      this.video.volume = Math.max(0, Math.min(1, acousticVol));
+      this.video.muted = (this.virtualVolumeLevel === 0);
+    }
+    if (this.externalAudioFile && this.externalAudio) {
+      this.externalAudio.volume = Math.max(0, Math.min(1, acousticVol));
+      this.externalAudio.muted = (this.virtualVolumeLevel === 0);
+    }
+    this._updateVolumeIcon();
+    if (this.volumeSlider) {
+      this.volumeSlider.value = normalized.toFixed(2);
+    }
+  }
+
+  resetVirtualEnvironment() {
+    this.setVirtualBrightness(100);
+    this.setVirtualVolume(100);
+    if (this.vancedBrightnessHud) this.vancedBrightnessHud.classList.remove('visible');
+    if (this.vancedVolumeHud) this.vancedVolumeHud.classList.remove('visible');
+  }
+
+  _showVancedBrightness(level) {
     if (!this.vancedBrightnessHud) return;
-    const pct = Math.round(brightnessVal * 100);
+    const pct = Math.round(level);
     if (this.vancedBrightnessText) this.vancedBrightnessText.innerText = `${pct}%`;
     if (this.vancedBrightnessBar) {
-      const fillPct = Math.min(100, Math.max(5, (brightnessVal / 2.0) * 100));
-      this.vancedBrightnessBar.style.height = `${fillPct}%`;
+      this.vancedBrightnessBar.style.height = `${pct}%`;
     }
     if (this.vancedBrightnessIcon) {
-      this.vancedBrightnessIcon.innerText = brightnessVal > 1.2 ? '🔆' : '☀️';
+      this.vancedBrightnessIcon.innerText = pct > 60 ? '☀️' : (pct > 20 ? '🌤️' : '🌙');
     }
     this.vancedBrightnessHud.classList.add('visible');
     if (this.vancedVolumeHud) this.vancedVolumeHud.classList.remove('visible');
@@ -903,15 +941,15 @@ class VideoPlayer {
     }, 700);
   }
 
-  _showVancedVolume(volVal) {
+  _showVancedVolume(level) {
     if (!this.vancedVolumeHud) return;
-    const pct = Math.round(volVal * 100);
+    const pct = Math.round(level);
     if (this.vancedVolumeText) this.vancedVolumeText.innerText = `${pct}%`;
     if (this.vancedVolumeBar) {
       this.vancedVolumeBar.style.height = `${pct}%`;
     }
     if (this.vancedVolumeIcon) {
-      this.vancedVolumeIcon.innerText = volVal === 0 ? '🔇' : (volVal < 0.5 ? '🔉' : '🔊');
+      this.vancedVolumeIcon.innerText = pct === 0 ? '🔇' : (pct < 40 ? '🔉' : '🔊');
     }
     this.vancedVolumeHud.classList.add('visible');
     if (this.vancedBrightnessHud) this.vancedBrightnessHud.classList.remove('visible');
