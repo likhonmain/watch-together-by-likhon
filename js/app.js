@@ -721,6 +721,52 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   setupMobilePanel();
 
+  // Audio Tracks, Dual-Audio Channel Routing & External Dub Controls
+  function initAudioDubControls() {
+    // 1. Channel buttons on both Mobile Tab 2 and Desktop Card 2
+    document.querySelectorAll('[data-channel]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const ch = btn.getAttribute('data-channel');
+        player.setAudioChannelMode(ch);
+      });
+    });
+
+    // 2. Dub File Inputs (Mobile, Desktop, Master)
+    ['dub-file-input', 'mp-dub-file-input', 'desktop-dub-file-input'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener('change', (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          player.loadExternalDub(file);
+        });
+      }
+    });
+
+    // 3. Remove Dub
+    ['mp-dub-remove', 'desktop-dub-remove'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          player.removeExternalDub();
+        });
+      }
+    });
+
+    // 4. Dub Delay Offset
+    const mpDubMinus = document.getElementById('mp-dub-minus');
+    const mpDubPlus = document.getElementById('mp-dub-plus');
+    const mpDubReset = document.getElementById('mp-dub-reset');
+
+    if (mpDubMinus) mpDubMinus.addEventListener('click', () => player.adjustDubOffset(-250));
+    if (mpDubPlus) mpDubPlus.addEventListener('click', () => player.adjustDubOffset(250));
+    if (mpDubReset) mpDubReset.addEventListener('click', () => player.resetDubOffset());
+  }
+
+  initAudioDubControls();
+
   sync.onPeerConnected = (peerId) => {
     console.log('[App] Peer connected:', peerId);
     showToast('🎉 Friend has joined your room! Play/pause/seek are now in sync.', true, 5000);

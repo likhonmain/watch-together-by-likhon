@@ -8,8 +8,8 @@
   <title>Watch Together by Likhon</title>
   
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='25' fill='%236366f1'/><polygon points='38,28 72,50 38,72' fill='white'/></svg>">
-  <link rel="manifest" href="manifest.json?v=3.7">
-  <link rel="stylesheet" href="css/style.css?v=3.7">
+  <link rel="manifest" href="manifest.json?v=3.8">
+  <link rel="stylesheet" href="css/style.css?v=3.8">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -130,10 +130,27 @@
 
         <!-- Mobile Touch Double-Tap Zones -->
         <div class="tap-zone tap-zone-left" id="tap-zone-left">
-          <div class="tap-ripple" id="tap-ripple-left">-10s</div>
+          <div class="tap-ripple" id="tap-ripple-left">-5s</div>
         </div>
         <div class="tap-zone tap-zone-right" id="tap-zone-right">
-          <div class="tap-ripple" id="tap-ripple-right">+10s</div>
+          <div class="tap-ripple" id="tap-ripple-right">+5s</div>
+        </div>
+
+        <!-- YouTube Vanced Style Gesture HUD (Left = Brightness, Right = Volume) -->
+        <div class="vanced-hud left" id="vanced-brightness-hud">
+          <div class="vanced-hud-icon" id="vanced-brightness-icon">☀️</div>
+          <div class="vanced-hud-bar-container">
+            <div class="vanced-hud-bar-fill" id="vanced-brightness-bar" style="height: 50%;"></div>
+          </div>
+          <div class="vanced-hud-text" id="vanced-brightness-text">100%</div>
+        </div>
+
+        <div class="vanced-hud right" id="vanced-volume-hud">
+          <div class="vanced-hud-icon" id="vanced-volume-icon">🔊</div>
+          <div class="vanced-hud-bar-container">
+            <div class="vanced-hud-bar-fill" id="vanced-volume-bar" style="height: 100%;"></div>
+          </div>
+          <div class="vanced-hud-text" id="vanced-volume-text">100%</div>
         </div>
 
         <!-- Custom Subtitles Rendering -->
@@ -144,13 +161,13 @@
         <!-- Floating Toast Notification Banner -->
         <div id="format-warning-banner" style="display: none; position: fixed; top: 75px; left: 50%; transform: translateX(-50%); background: rgba(16, 185, 129, 0.95); color: white; padding: 12px 24px; border-radius: 12px; font-size: 0.9rem; font-weight: 600; z-index: 100; text-align: center; max-width: 90%; box-shadow: 0 12px 35px rgba(0,0,0,0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.2);"></div>
 
-        <!-- Mobile Center Touch Controls (Rewind 10s, Big Play, Forward 10s) -->
+        <!-- Mobile Center Touch Controls (Rewind 5s, Big Play, Forward 5s) -->
         <div class="mobile-center-controls hidden" id="mobile-center-controls">
-          <button class="mcc-btn" id="mcc-skip-back" title="Rewind 10s">
+          <button class="mcc-btn" id="mcc-skip-back" title="Rewind 5s">
             <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
             </svg>
-            <span>10s</span>
+            <span>5s</span>
           </button>
           <button class="mcc-btn mcc-play" id="mcc-play-pause" title="Play/Pause">
             <svg class="icon-play" viewBox="0 0 24 24" width="34" height="34" fill="currentColor">
@@ -161,11 +178,11 @@
               <rect x="14" y="4" width="4" height="16"/>
             </svg>
           </button>
-          <button class="mcc-btn" id="mcc-skip-forward" title="Forward 10s">
+          <button class="mcc-btn" id="mcc-skip-forward" title="Forward 5s">
             <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M13 17l5-5-5-5M6 17l5-5-5-5"/>
             </svg>
-            <span>10s</span>
+            <span>5s</span>
           </button>
         </div>
 
@@ -197,15 +214,15 @@
                 </svg>
               </button>
 
-              <!-- Skip -10s -->
-              <button class="ctrl-btn" id="btn-skip-back" title="Rewind 10s (J / Left Arrow)">
+              <!-- Skip -5s -->
+              <button class="ctrl-btn" id="btn-skip-back" title="Rewind 5s (J / Left Arrow)">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
                 </svg>
               </button>
 
-              <!-- Skip +10s -->
-              <button class="ctrl-btn" id="btn-skip-forward" title="Forward 10s (L / Right Arrow)">
+              <!-- Skip +5s -->
+              <button class="ctrl-btn" id="btn-skip-forward" title="Forward 5s (L / Right Arrow)">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M13 17l5-5-5-5M6 17l5-5-5-5"/>
                 </svg>
@@ -270,7 +287,7 @@
 
               <!-- Audio Tracks Menu -->
               <div class="menu-container">
-                <button class="ctrl-btn" id="btn-audio" title="Audio Tracks" style="display: none;">
+                <button class="ctrl-btn" id="btn-audio" title="Audio Tracks & Dubs">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M9 18V5l12-2v13"/>
                     <circle cx="6" cy="18" r="3"/>
@@ -278,7 +295,15 @@
                   </svg>
                 </button>
                 <div class="popup-menu" id="audio-menu">
-                  <div class="menu-header">Audio Tracks</div>
+                  <div class="menu-header">Audio Tracks & Dubs</div>
+                  <div id="audio-tracks-list"></div>
+                  <div class="menu-divider"></div>
+                  <div class="menu-header">Dual-Audio Channel</div>
+                  <button class="menu-item active" id="menu-channel-stereo" data-channel="stereo">🎧 Stereo (All Channels)</button>
+                  <button class="menu-item" id="menu-channel-left" data-channel="left">Left Channel (Dub 1)</button>
+                  <button class="menu-item" id="menu-channel-right" data-channel="right">Right Channel (Dub 2)</button>
+                  <div class="menu-divider"></div>
+                  <button class="menu-item" id="menu-load-dub">📁 Load External Dub Track</button>
                 </div>
               </div>
 
@@ -427,6 +452,47 @@
                 <button class="btn btn-sm" id="mp-sub-reset">Reset</button>
               </div>
             </div>
+
+            <!-- Audio Tracks & Dub Selection -->
+            <div class="mp-section" style="margin-top: 0.85rem;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                <label class="mp-section-title" style="margin-bottom: 0;">🎧 Audio Tracks & Dubs</label>
+                <span class="user-role-pill guest" id="mp-audio-active-label">Stereo</span>
+              </div>
+
+              <!-- Dual-Audio / Multi-Dub Channel Switcher -->
+              <div style="margin-bottom: 0.65rem;">
+                <span style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">Dual-Audio Release Channel:</span>
+                <div class="mp-audio-channels" id="mp-audio-channels">
+                  <button class="mp-pill active" data-channel="stereo" title="Standard Stereo (All Channels)">🎧 Stereo</button>
+                  <button class="mp-pill" data-channel="left" title="Left Channel (Often Dub 1 / Hindi)">Left (Dub 1)</button>
+                  <button class="mp-pill" data-channel="right" title="Right Channel (Often Dub 2 / English)">Right (Dub 2)</button>
+                </div>
+              </div>
+
+              <!-- External Audio Track Loader -->
+              <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                <label class="btn btn-sm" style="text-align: center; cursor: pointer; background: rgba(99, 102, 241, 0.15); border: 1px dashed rgba(99, 102, 241, 0.4);">
+                  📁 Load External Dub (.mp3, .m4a, .aac)
+                  <input type="file" id="mp-dub-file-input" accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg" style="display: none;">
+                </label>
+                <div id="mp-dub-status" style="font-size: 0.72rem; color: var(--text-secondary); display: none; align-items: center; justify-content: space-between;">
+                  <span id="mp-dub-filename">No external track</span>
+                  <button class="btn btn-xs" id="mp-dub-remove" style="color: var(--accent-danger); padding: 1px 6px;">Remove</button>
+                </div>
+              </div>
+
+              <!-- Dub Audio Delay Offset -->
+              <div id="mp-dub-offset-container" style="display: none; margin-top: 0.5rem;">
+                <label class="mp-section-title" style="font-size: 0.72rem;">Audio Dub Sync Offset</label>
+                <div class="mp-sync-offset-row">
+                  <button class="btn btn-sm" id="mp-dub-minus">- 250ms</button>
+                  <span class="mp-offset-badge" id="mp-dub-offset-display">0ms</span>
+                  <button class="btn btn-sm" id="mp-dub-plus">+ 250ms</button>
+                  <button class="btn btn-sm" id="mp-dub-reset">Reset</button>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- Tab 3: Room Users & Profile -->
@@ -537,6 +603,27 @@
           <button class="btn btn-sm" id="desktop-sub-plus">+250ms</button>
           <button class="btn btn-sm" id="desktop-sub-reset">Reset</button>
         </div>
+
+        <!-- Audio Tracks & Dubs (Desktop) -->
+        <div style="border-top: 1px solid rgba(255, 255, 255, 0.08); margin-top: 0.6rem; padding-top: 0.6rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem; font-size: 0.78rem; font-weight: 600;">
+            <span>🎧 Audio & Dub Tracks</span>
+            <span class="user-role-pill guest" id="desktop-audio-active-label">Stereo</span>
+          </div>
+          <div class="mp-audio-channels" id="desktop-audio-channels" style="margin-bottom: 0.5rem;">
+            <button class="mp-pill active" data-channel="stereo" title="Standard Stereo (All Channels)">Stereo</button>
+            <button class="mp-pill" data-channel="left" title="Left Channel (Dub 1)">Left</button>
+            <button class="mp-pill" data-channel="right" title="Right Channel (Dub 2)">Right</button>
+          </div>
+          <label class="btn btn-sm" style="display: block; text-align: center; cursor: pointer; background: rgba(99, 102, 241, 0.15); border: 1px dashed rgba(99, 102, 241, 0.4);">
+            📁 Load Dub Track (.mp3, .m4a)
+            <input type="file" id="desktop-dub-file-input" accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg" style="display: none;">
+          </label>
+          <div id="desktop-dub-status" style="font-size: 0.72rem; color: var(--text-secondary); display: none; align-items: center; justify-content: space-between; margin-top: 0.4rem;">
+            <span id="desktop-dub-filename" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px;"></span>
+            <button class="btn btn-xs" id="desktop-dub-remove" style="color: var(--accent-danger); padding: 1px 5px;">Remove</button>
+          </div>
+        </div>
       </div>
 
       <!-- Card 3: Live Room Chat -->
@@ -560,16 +647,18 @@
     <!-- Master Hidden File Inputs -->
     <input type="file" id="file-input" accept="video/*,.mkv,.mp4,.webm" style="display: none;">
     <input type="file" id="sub-file-input" accept=".srt,.vtt" style="display: none;">
+    <input type="file" id="dub-file-input" accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg" style="display: none;">
+    <audio id="external-audio-player" preload="auto" style="display: none;"></audio>
   </main>
 
   <!-- Scripts (Cache Busted) -->
-  <script src="js/peerjs.min.js?v=3.7"></script>
-  <script src="js/srt-parser.js?v=3.7"></script>
-  <script src="js/sync.js?v=3.7"></script>
-  <script src="js/voice.js?v=3.7"></script>
-  <script src="js/chat.js?v=3.7"></script>
-  <script src="js/player.js?v=3.7"></script>
-  <script src="js/app.js?v=3.7"></script>
+  <script src="js/peerjs.min.js?v=3.8"></script>
+  <script src="js/srt-parser.js?v=3.8"></script>
+  <script src="js/sync.js?v=3.8"></script>
+  <script src="js/voice.js?v=3.8"></script>
+  <script src="js/chat.js?v=3.8"></script>
+  <script src="js/player.js?v=3.8"></script>
+  <script src="js/app.js?v=3.8"></script>
 
   <!-- PWA Service Worker Registration -->
   <script>

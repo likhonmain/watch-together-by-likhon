@@ -45,11 +45,34 @@ class VideoPlayer {
     this.tapZoneLeft = document.getElementById('tap-zone-left');
     this.tapZoneRight = document.getElementById('tap-zone-right');
 
+    // YouTube Vanced Gesture HUD Elements
+    this.vancedBrightnessHud = document.getElementById('vanced-brightness-hud');
+    this.vancedBrightnessBar = document.getElementById('vanced-brightness-bar');
+    this.vancedBrightnessText = document.getElementById('vanced-brightness-text');
+    this.vancedBrightnessIcon = document.getElementById('vanced-brightness-icon');
+
+    this.vancedVolumeHud = document.getElementById('vanced-volume-hud');
+    this.vancedVolumeBar = document.getElementById('vanced-volume-bar');
+    this.vancedVolumeText = document.getElementById('vanced-volume-text');
+    this.vancedVolumeIcon = document.getElementById('vanced-volume-icon');
+
     // Mobile Center Controls
     this.mccContainer = document.getElementById('mobile-center-controls');
     this.mccPlayPause = document.getElementById('mcc-play-pause');
     this.mccSkipBack = document.getElementById('mcc-skip-back');
     this.mccSkipForward = document.getElementById('mcc-skip-forward');
+
+    // Audio & Dub State
+    this.externalAudio = document.getElementById('external-audio-player');
+    this.externalAudioFile = null;
+    this.audioChannelMode = 'stereo';
+    this.audioCtx = null;
+    this.audioSplitter = null;
+    this.audioMerger = null;
+    this.mediaSourceNode = null;
+    this.dubOffsetMs = 0;
+    this.brightness = 1.0;
+    this.vancedTimeout = null;
 
     // State
     this.isDraggingTimeline = false;
@@ -94,13 +117,13 @@ class VideoPlayer {
     if (this.mccSkipBack) {
       this.mccSkipBack.addEventListener('click', (e) => {
         e.stopPropagation();
-        this.seekDelta(-10);
+        this.seekDelta(-5);
       });
     }
     if (this.mccSkipForward) {
       this.mccSkipForward.addEventListener('click', (e) => {
         e.stopPropagation();
-        this.seekDelta(10);
+        this.seekDelta(5);
       });
     }
 
@@ -209,6 +232,10 @@ class VideoPlayer {
       this._updatePlayButton(true);
       this._hideCenterPlayCard();
       this._setupControlsAutoHide();
+      if (this.externalAudioFile && this.externalAudio) {
+        this.externalAudio.currentTime = Math.max(0, this.video.currentTime + (this.dubOffsetMs / 1000));
+        this.externalAudio.play().catch(e => console.warn(e));
+      }
       if (this.sync && !this.sync.isRemoteUpdate) {
         this.sync.sendPlay(this.video.currentTime, this.video.playbackRate);
       }
@@ -216,6 +243,9 @@ class VideoPlayer {
 
     this.video.addEventListener('pause', () => {
       this._updatePlayButton(false);
+      if (this.externalAudio) {
+        this.externalAudio.pause();
+      }
       // When paused, NEVER hide controls!
       if (this.controlsOverlay) this.controlsOverlay.classList.remove('hidden');
       if (this.hasMediaLoaded) {
@@ -229,15 +259,33 @@ class VideoPlayer {
     });
 
     this.video.addEventListener('seeking', () => {
+      if (this.externalAudioFile && this.externalAudio) {
+        this.externalAudio.currentTime = Math.max(0, this.video.currentTime + (this.dubOffsetMs / 1000));
+      }
       if (this.sync && !this.sync.isRemoteUpdate) {
         this.sync.sendSeek(this.video.currentTime);
       }
     });
 
+    this.video.addEventListener('seeked', () => {
+      if (this.externalAudioFile && this.externalAudio) {
+        this.externalAudio.currentTime = Math.max(0, this.video.currentTime + (this.dubOffsetMs / 1000));
+      }
+    });
+
     this.video.addEventListener('ratechange', () => {
       this._updateSpeedUI();
+      if (this.externalAudioFile && this.externalAudio) {
+        this.externalAudio.playbackRate = this.video.playbackRate;
+      }
       if (this.sync && !this.sync.isRemoteUpdate) {
         this.sync.sendRate(this.video.playbackRate);
+      }
+    });
+
+    this.video.addEventListener('volumechange', () => {
+      if (this.externalAudioFile && this.externalAudio) {
+        this.externalAudio.volume = this.video.volume;
       }
     });
 
@@ -272,11 +320,11 @@ class VideoPlayer {
     }
 
     if (this.skipBackBtn) {
-      this.skipBackBtn.addEventListener('click', () => this.seekDelta(-10));
+      this.skipBackBtn.addEventListener('click', () => this.seekDelta(-5));
     }
 
     if (this.skipForwardBtn) {
-      this.skipForwardBtn.addEventListener('click', () => this.seekDelta(10));
+      this.skipForwardBtn.addEventListener('click', () => this.seekDelta(5));
     }
 
     if (this.volumeBtn) {
@@ -503,11 +551,11 @@ class VideoPlayer {
           break;
         case 'KeyJ':
           e.preventDefault();
-          this.seekDelta(-10);
+          this.seekDelta(-5);
           break;
         case 'KeyL':
           e.preventDefault();
-          this.seekDelta(10);
+          this.seekDelta(5);
           break;
         case 'ArrowUp':
           e.preventDefault();
@@ -547,37 +595,109 @@ class VideoPlayer {
   }
 
   /* ------------------------------------------------------------------------
-     Mobile Touch Gestures
+     Mobile Touch Gestures & YouTube Vanced Swipe Controls
      ------------------------------------------------------------------------ */
   _bindMobileGestures() {
-    if (this.tapZoneLeft) {
-      this.tapZoneLeft.addEventListener('touchend', (e) => {
-        const now = Date.now();
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let isSwiping = false;
+    let isLeftSide = false;
+    let initialVolume = 1.0;
+    let initialBrightness = 1.0;
+
+    const onTouchStart = (e) => {
+      if (e.touches.length !== 1) return;
+      const touch = e.touches[0];
+      touchStartX = touch.clientX;
+      touchStartY = touch.clientY;
+      isSwiping = false;
+
+      const rect = this.videoWrapper ? this.videoWrapper.getBoundingClientRect() : { left: 0, width: window.innerWidth, height: window.innerHeight };
+      isLeftSide = (touchStartX < rect.left + rect.width / 2);
+      initialVolume = this.video ? this.video.volume : 1.0;
+      initialBrightness = this.brightness || 1.0;
+    };
+
+    const onTouchMove = (e) => {
+      if (e.touches.length !== 1) return;
+      const touch = e.touches[0];
+      const deltaX = Math.abs(touch.clientX - touchStartX);
+      const deltaY = touchStartY - touch.clientY; // upward drag is positive
+
+      if (!isSwiping) {
+        if (Math.abs(deltaY) > 10 && Math.abs(deltaY) > deltaX * 1.2) {
+          isSwiping = true;
+        }
+      }
+
+      if (isSwiping) {
+        if (e.cancelable) e.preventDefault();
+        const rect = this.videoWrapper ? this.videoWrapper.getBoundingClientRect() : { height: 300 };
+        const factor = deltaY / (rect.height * 0.7);
+
+        if (isLeftSide) {
+          // Left side: Brightness (10% to 200%)
+          const newB = Math.max(0.1, Math.min(2.0, initialBrightness + factor * 1.5));
+          this.setBrightness(newB);
+          this._showVancedBrightness(newB);
+        } else {
+          // Right side: Volume (0% to 100%)
+          const newV = Math.max(0.0, Math.min(1.0, initialVolume + factor));
+          if (this.video) {
+            this.video.volume = newV;
+            this.video.muted = (newV === 0);
+          }
+          if (this.externalAudioFile && this.externalAudio) {
+            this.externalAudio.volume = newV;
+          }
+          this._updateVolumeIcon();
+          if (this.volumeSlider) this.volumeSlider.value = newV;
+          this._showVancedVolume(newV);
+        }
+      }
+    };
+
+    const onTouchEnd = (e, side) => {
+      if (isSwiping) {
+        isSwiping = false;
+        return;
+      }
+
+      // Handle Double-Tap (±5s) vs Single Tap
+      const now = Date.now();
+      if (side === 'left') {
         if (now - this.lastTapTimeLeft < 300) {
-          e.preventDefault();
-          this.seekDelta(-10);
-          this._triggerRipple(this.tapZoneLeft, '-10s');
+          if (e.cancelable) e.preventDefault();
+          this.seekDelta(-5);
+          this._triggerRipple(this.tapZoneLeft, '-5s');
           this.lastTapTimeLeft = 0;
         } else {
           this.lastTapTimeLeft = now;
           this._handleScreenTap();
         }
-      });
-    }
-
-    if (this.tapZoneRight) {
-      this.tapZoneRight.addEventListener('touchend', (e) => {
-        const now = Date.now();
+      } else if (side === 'right') {
         if (now - this.lastTapTimeRight < 300) {
-          e.preventDefault();
-          this.seekDelta(10);
-          this._triggerRipple(this.tapZoneRight, '+10s');
+          if (e.cancelable) e.preventDefault();
+          this.seekDelta(5);
+          this._triggerRipple(this.tapZoneRight, '+5s');
           this.lastTapTimeRight = 0;
         } else {
           this.lastTapTimeRight = now;
           this._handleScreenTap();
         }
-      });
+      }
+    };
+
+    if (this.tapZoneLeft) {
+      this.tapZoneLeft.addEventListener('touchstart', onTouchStart, { passive: true });
+      this.tapZoneLeft.addEventListener('touchmove', onTouchMove, { passive: false });
+      this.tapZoneLeft.addEventListener('touchend', (e) => onTouchEnd(e, 'left'));
+    }
+
+    if (this.tapZoneRight) {
+      this.tapZoneRight.addEventListener('touchstart', onTouchStart, { passive: true });
+      this.tapZoneRight.addEventListener('touchmove', onTouchMove, { passive: false });
+      this.tapZoneRight.addEventListener('touchend', (e) => onTouchEnd(e, 'right'));
     }
 
     this.video.addEventListener('click', () => {
@@ -754,12 +874,239 @@ class VideoPlayer {
   }
 
   /* ------------------------------------------------------------------------
-     Audio Track Selection
+     YouTube Vanced Gesture HUD Helpers
      ------------------------------------------------------------------------ */
+  setBrightness(val) {
+    this.brightness = Math.max(0.1, Math.min(2.0, val));
+    if (this.video) {
+      this.video.style.filter = `brightness(${this.brightness})`;
+    }
+  }
+
+  _showVancedBrightness(brightnessVal) {
+    if (!this.vancedBrightnessHud) return;
+    const pct = Math.round(brightnessVal * 100);
+    if (this.vancedBrightnessText) this.vancedBrightnessText.innerText = `${pct}%`;
+    if (this.vancedBrightnessBar) {
+      const fillPct = Math.min(100, Math.max(5, (brightnessVal / 2.0) * 100));
+      this.vancedBrightnessBar.style.height = `${fillPct}%`;
+    }
+    if (this.vancedBrightnessIcon) {
+      this.vancedBrightnessIcon.innerText = brightnessVal > 1.2 ? '🔆' : '☀️';
+    }
+    this.vancedBrightnessHud.classList.add('visible');
+    if (this.vancedVolumeHud) this.vancedVolumeHud.classList.remove('visible');
+
+    if (this.vancedTimeout) clearTimeout(this.vancedTimeout);
+    this.vancedTimeout = setTimeout(() => {
+      if (this.vancedBrightnessHud) this.vancedBrightnessHud.classList.remove('visible');
+    }, 700);
+  }
+
+  _showVancedVolume(volVal) {
+    if (!this.vancedVolumeHud) return;
+    const pct = Math.round(volVal * 100);
+    if (this.vancedVolumeText) this.vancedVolumeText.innerText = `${pct}%`;
+    if (this.vancedVolumeBar) {
+      this.vancedVolumeBar.style.height = `${pct}%`;
+    }
+    if (this.vancedVolumeIcon) {
+      this.vancedVolumeIcon.innerText = volVal === 0 ? '🔇' : (volVal < 0.5 ? '🔉' : '🔊');
+    }
+    this.vancedVolumeHud.classList.add('visible');
+    if (this.vancedBrightnessHud) this.vancedBrightnessHud.classList.remove('visible');
+
+    if (this.vancedTimeout) clearTimeout(this.vancedTimeout);
+    this.vancedTimeout = setTimeout(() => {
+      if (this.vancedVolumeHud) this.vancedVolumeHud.classList.remove('visible');
+    }, 700);
+  }
+
+  /* ------------------------------------------------------------------------
+     Audio Track Selection, Dual-Audio Channels & External Dubs
+     ------------------------------------------------------------------------ */
+  setAudioChannelMode(mode) {
+    this.audioChannelMode = mode || 'stereo';
+    this._applyAudioChannelRouting();
+    this._updateAudioChannelUI();
+    if (window.showToast) {
+      const msgs = {
+        stereo: '🎧 Audio: Stereo (Both Channels)',
+        left: '🎧 Audio: Left Channel (Dub 1)',
+        right: '🎧 Audio: Right Channel (Dub 2)'
+      };
+      window.showToast(msgs[this.audioChannelMode] || 'Audio channel updated', true, 2500);
+    }
+  }
+
+  _initWebAudioRouting() {
+    if (this.audioCtx) return true;
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return false;
+      this.audioCtx = new AudioCtx();
+      this.mediaSourceNode = this.audioCtx.createMediaElementSource(this.video);
+      this.audioSplitter = this.audioCtx.createChannelSplitter(2);
+      this.audioMerger = this.audioCtx.createChannelMerger(2);
+
+      this.mediaSourceNode.connect(this.audioSplitter);
+      this.audioMerger.connect(this.audioCtx.destination);
+      return true;
+    } catch (e) {
+      console.warn('[Player] Web Audio API routing note:', e);
+      return false;
+    }
+  }
+
+  _applyAudioChannelRouting() {
+    if (!this._initWebAudioRouting()) return;
+    if (this.audioCtx.state === 'suspended') {
+      this.audioCtx.resume();
+    }
+
+    try {
+      this.audioSplitter.disconnect();
+
+      if (this.audioChannelMode === 'left') {
+        // Left channel (often Dub 1) to both ears
+        this.audioSplitter.connect(this.audioMerger, 0, 0);
+        this.audioSplitter.connect(this.audioMerger, 0, 1);
+      } else if (this.audioChannelMode === 'right') {
+        // Right channel (often Dub 2) to both ears
+        this.audioSplitter.connect(this.audioMerger, 1, 0);
+        this.audioSplitter.connect(this.audioMerger, 1, 1);
+      } else {
+        // Standard Stereo
+        this.audioSplitter.connect(this.audioMerger, 0, 0);
+        this.audioSplitter.connect(this.audioMerger, 1, 1);
+      }
+    } catch (e) {
+      console.warn('[Player] Channel routing adjustment error:', e);
+    }
+  }
+
+  _updateAudioChannelUI() {
+    document.querySelectorAll('[data-channel]').forEach(btn => {
+      if (btn.getAttribute('data-channel') === this.audioChannelMode) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+
+    const labels = {
+      stereo: 'Stereo',
+      left: 'Left (Dub 1)',
+      right: 'Right (Dub 2)'
+    };
+    const txt = labels[this.audioChannelMode] || 'Stereo';
+    const mpBadge = document.getElementById('mp-audio-active-label');
+    if (mpBadge) mpBadge.innerText = txt;
+    const dtBadge = document.getElementById('desktop-audio-active-label');
+    if (dtBadge) dtBadge.innerText = txt;
+  }
+
+  loadExternalDub(file) {
+    if (!file) return;
+    if (!this.externalAudio) {
+      this.externalAudio = document.getElementById('external-audio-player');
+    }
+    if (!this.externalAudio) return;
+
+    this.externalAudioFile = file;
+    this.externalAudio.src = URL.createObjectURL(file);
+    this.externalAudio.currentTime = Math.max(0, this.video.currentTime + (this.dubOffsetMs / 1000));
+    this.externalAudio.playbackRate = this.video.playbackRate;
+
+    // Mute internal video audio to hear external dub
+    this.video.muted = true;
+
+    if (!this.video.paused) {
+      this.externalAudio.play().catch(e => console.warn(e));
+    }
+
+    const updateUI = (containerId, nameId, filename) => {
+      const cont = document.getElementById(containerId);
+      const name = document.getElementById(nameId);
+      if (cont && name) {
+        name.innerText = filename;
+        cont.style.display = 'flex';
+      }
+    };
+    updateUI('mp-dub-status', 'mp-dub-filename', file.name);
+    updateUI('desktop-dub-status', 'desktop-dub-filename', file.name);
+
+    const mpOffset = document.getElementById('mp-dub-offset-container');
+    if (mpOffset) mpOffset.style.display = 'block';
+
+    const mpBadge = document.getElementById('mp-audio-active-label');
+    if (mpBadge) mpBadge.innerText = 'External Dub';
+    const dtBadge = document.getElementById('desktop-audio-active-label');
+    if (dtBadge) dtBadge.innerText = 'External Dub';
+
+    if (window.showToast) {
+      window.showToast(`🎧 Loaded Dub Track: ${file.name}`, true, 4000);
+    }
+    this._detectAudioTracks();
+  }
+
+  removeExternalDub() {
+    if (this.externalAudio) {
+      this.externalAudio.pause();
+      this.externalAudio.removeAttribute('src');
+      this.externalAudio.load();
+    }
+    this.externalAudioFile = null;
+    this.video.muted = false;
+
+    const mpCont = document.getElementById('mp-dub-status');
+    if (mpCont) mpCont.style.display = 'none';
+    const dtCont = document.getElementById('desktop-dub-status');
+    if (dtCont) dtCont.style.display = 'none';
+    const mpOffset = document.getElementById('mp-dub-offset-container');
+    if (mpOffset) mpOffset.style.display = 'none';
+
+    this._updateAudioChannelUI();
+    if (window.showToast) {
+      window.showToast('Default video audio restored', true, 3000);
+    }
+    this._detectAudioTracks();
+  }
+
+  adjustDubOffset(deltaMs) {
+    this.dubOffsetMs += deltaMs;
+    if (this.externalAudio && this.externalAudioFile) {
+      this.externalAudio.currentTime = Math.max(0, this.video.currentTime + (this.dubOffsetMs / 1000));
+    }
+    const display = `${this.dubOffsetMs > 0 ? '+' : ''}${this.dubOffsetMs}ms`;
+    const badge = document.getElementById('mp-dub-offset-display');
+    if (badge) badge.innerText = display;
+  }
+
+  resetDubOffset() {
+    this.dubOffsetMs = 0;
+    if (this.externalAudio && this.externalAudioFile) {
+      this.externalAudio.currentTime = this.video.currentTime;
+    }
+    const badge = document.getElementById('mp-dub-offset-display');
+    if (badge) badge.innerText = '0ms';
+  }
+
   _detectAudioTracks() {
     if (!this.audioMenu) return;
-    this.audioMenu.innerHTML = '<div class="menu-header">Audio Tracks</div>';
+    this.audioMenu.innerHTML = `
+      <div class="menu-header">Audio Tracks & Dubs</div>
+      <div id="audio-tracks-list"></div>
+      <div class="menu-divider"></div>
+      <div class="menu-header">Dual-Audio Channel</div>
+      <button class="menu-item ${this.audioChannelMode === 'stereo' ? 'active' : ''}" data-channel="stereo">🎧 Stereo (All Channels)</button>
+      <button class="menu-item ${this.audioChannelMode === 'left' ? 'active' : ''}" data-channel="left">Left Channel (Dub 1)</button>
+      <button class="menu-item ${this.audioChannelMode === 'right' ? 'active' : ''}" data-channel="right">Right Channel (Dub 2)</button>
+      <div class="menu-divider"></div>
+      <button class="menu-item" id="menu-btn-load-dub">📁 Load External Dub Track</button>
+    `;
 
+    const list = this.audioMenu.querySelector('#audio-tracks-list');
     if (this.video.audioTracks && this.video.audioTracks.length > 1) {
       for (let i = 0; i < this.video.audioTracks.length; i++) {
         const track = this.video.audioTracks[i];
@@ -773,15 +1120,40 @@ class VideoPlayer {
           this._detectAudioTracks();
           this._closeAllMenus();
         });
-        this.audioMenu.appendChild(btn);
+        if (list) list.appendChild(btn);
       }
-      if (this.audioTracksBtn) this.audioTracksBtn.style.display = 'flex';
     } else {
-      const info = document.createElement('div');
-      info.className = 'menu-item';
-      info.innerText = 'Standard Audio (Default)';
-      this.audioMenu.appendChild(info);
+      const defItem = document.createElement('button');
+      defItem.className = `menu-item ${!this.externalAudioFile ? 'active' : ''}`;
+      defItem.innerText = this.externalAudioFile ? '● Default Video Audio (Muted)' : '● Default Video Audio';
+      defItem.addEventListener('click', () => {
+        this.removeExternalDub();
+        this._closeAllMenus();
+      });
+      if (list) list.appendChild(defItem);
     }
+
+    // Connect channel buttons in popup
+    this.audioMenu.querySelectorAll('[data-channel]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const ch = btn.getAttribute('data-channel');
+        this.setAudioChannelMode(ch);
+        this._closeAllMenus();
+      });
+    });
+
+    const loadDubBtn = this.audioMenu.querySelector('#menu-btn-load-dub');
+    if (loadDubBtn) {
+      loadDubBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this._closeAllMenus();
+        const dubInput = document.getElementById('dub-file-input') || document.getElementById('mp-dub-file-input');
+        if (dubInput) dubInput.click();
+      });
+    }
+
+    if (this.audioTracksBtn) this.audioTracksBtn.style.display = 'flex';
   }
 
   /* ------------------------------------------------------------------------
