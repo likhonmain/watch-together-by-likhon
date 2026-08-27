@@ -72,12 +72,18 @@ class VideoPlayer {
     if (!file) return;
     const url = URL.createObjectURL(file);
     this.video.src = url;
+    this.video.pause();
+    this.video.currentTime = 0;
     this.video.load();
+    this.video.pause();
 
     console.log(`[Player] Loaded local file: ${file.name} (${(file.size / (1024*1024)).toFixed(1)} MB)`);
 
     // Broadcast file info to peer so they can match
     this.video.onloadedmetadata = () => {
+      this.video.pause(); // Guarantee it remains paused
+      this._updatePlayButton(false);
+      this._updateProgress();
       if (this.sync) {
         this.sync.sendFileInfo(file.name, file.size, this.video.duration);
       }

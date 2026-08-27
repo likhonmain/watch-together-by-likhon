@@ -1,6 +1,7 @@
 /**
  * Watch Together by Likhon — P2P Synchronization Engine (WebRTC via PeerJS)
- * Handles low-latency state sync, drift correction, ping/RTT, and loop prevention.
+ * Features Open Relay Project TURN servers for guaranteed mobile/NAT traversal,
+ * bidirectional handshake, collision auto-retry, and drift correction.
  */
 
 class SyncEngine {
@@ -14,75 +15,127 @@ class SyncEngine {
     this.lastPing = 0;
     this.heartbeatTimer = null;
     this.pingTimer = null;
+    this.peerReady = false;
 
     // Callbacks
-    this.onStatusChange = null;
-    this.onActionReceived = null;
-    this.onChatReceived = null;
-    this.onFileInfoReceived = null;
-    this.onPingUpdated = null;
-    this.onPeerCountChanged = null;
+    this.onStatusChange = null;   // (status: string, detail?: string) => void
+    this.onPeerConnected = null;  // (peerId: string) => void
+    this.onPeerDisconnected = null; // (peerId: string) => void
+    this.onActionReceived = null; // (actionData: object) => void
+    this.onChatReceived = null;   // (chatData: object) => void
+    this.onFileInfoReceived = null; // (fileInfo: object) => void
+    this.onPingUpdated = null;    // (pingMs: number) => void
+    this.onPeerCountChanged = null; // (count: number) => void
+  }
+
+  /**
+   * Get production-grade WebRTC configuration with Google STUN + Open Relay TURN
+   * (Essential for mobile 4G/5G carriers and Symmetric NAT)
+   */
+  _getPeerConfig() {
+    return {
+      debug: 1,
+      config: {
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'stun:openrelay.metered.ca:80' },
+          {
+            urls: 'turn:openrelay.metered.ca:80',
+            username: 'openrelayproject',
+            credential: 'openrelayproject'
+          },
+          {
+            urls: 'turn:openrelay.metered.ca:443',
+            username: 'openrelayproject',
+            credential: 'openrelayproject'
+          },
+          {
+            urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+            username: 'openrelayproject',
+            credential: 'openrelayproject'
+          }
+        ]
+      }
+    };
   }
 
   /**
    * Initialize PeerJS instance
    */
-  init(peerId = null) {
+  init(customId = null) {
     return new Promise((resolve, reject) => {
-      // Free public PeerJS cloud broker with STUN servers
-      const options = {
-        debug: 1,
-        config: {
-          iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' },
-            { urls: 'stun:stun2.l.google.com:19302' }
-          ]
-        }
-      };
+      if (this.peer && !this.peer.destroyed) {
+        this.peer.destroy();
+      }
 
-      if (peerId) {
-        this.peer = new Peer(peerId, options);
-      } else {
-        this.peer = new Peer(options);
+      this.peerReady = false;
+      const options = this._getPeerConfig();
+
+      console.log(`[Sync] Initializing PeerJS${customId ? ' with ID: ' + customId : ''}...`);
+      this._updateStatus('connecting', 'Connecting to signaling server...');
+
+      try {
+        if (customId) {
+          this.peer = new Peer(customId, options);
+        } else {
+          this.peer = new Peer(options);
+        }
+      } catch (err) {
+        console.error('[Sync] Peer constructor failed:', err);
+        this._updateStatus('error', 'Could not initialize Peer connection.');
+        return reject(err);
       }
 
       this.peer.on('open', (id) => {
         this.localPeerId = id;
-        console.log(`[Sync] Peer initialized with ID: ${id}`);
-        this._updateStatus('ready');
+        this.peerReady = true;
+        console.log(`[Sync] Peer successfully opened with ID: ${id}`);
+        this._updateStatus('ready', `Room ready: ${id}`);
         resolve(id);
       });
 
       this.peer.on('connection', (conn) => {
         console.log(`[Sync] Incoming peer connection from: ${conn.peer}`);
-        this._setupConnection(conn);
+        this._setupConnection(conn, false);
       });
 
       this.peer.on('error', (err) => {
-        console.error('[Sync] Peer error:', err);
-        if (this.onStatusChange) this.onStatusChange('error', err.type || 'Connection error');
+        console.error('[Sync] Peer error:', err.type, err.message);
+
+        if (err.type === 'unavailable-id') {
+          // If custom ID is taken, auto-retry with a unique code
+          console.warn('[Sync] Room ID taken, retrying with new ID...');
+          const newCode = 'wt-' + Math.random().toString(36).substring(2, 8);
+          this.roomId = newCode;
+          this.init(newCode).then(resolve).catch(reject);
+          return;
+        } else if (err.type === 'peer-unavailable') {
+          this._updateStatus('error', 'Room not found. Make sure the Host has created the room and is online.');
+        } else {
+          this._updateStatus('error', err.type || 'Connection error');
+        }
         reject(err);
       });
 
       this.peer.on('disconnected', () => {
-        console.warn('[Sync] Peer disconnected from signaling server');
-        this._updateStatus('disconnected');
+        console.warn('[Sync] Peer disconnected from broker server. Reconnecting...');
+        this._updateStatus('disconnected', 'Signaling disconnected');
+        if (this.peer && !this.peer.destroyed) {
+          this.peer.reconnect();
+        }
       });
     });
   }
 
   /**
-   * Host creates a new room with a random 6-character room ID
+   * Host creates a new room
    */
   async createRoom() {
+    // Generate clean 6-character room code
     const randomCode = 'wt-' + Math.random().toString(36).substring(2, 8);
     this.isHost = true;
     this.roomId = randomCode;
-
-    if (this.peer) {
-      this.peer.destroy();
-    }
 
     await this.init(randomCode);
     this._startHeartbeat();
@@ -97,35 +150,49 @@ class SyncEngine {
     this.isHost = false;
     this.roomId = targetRoomId;
 
-    if (!this.peer || this.peer.destroyed) {
+    if (!this.peer || this.peer.destroyed || !this.peerReady) {
       await this.init();
     }
 
-    this._updateStatus('connecting');
-    console.log(`[Sync] Connecting to room: ${targetRoomId}`);
+    this._updateStatus('connecting', `Connecting to room: ${targetRoomId}...`);
+    console.log(`[Sync] Initiating connection to room: ${targetRoomId}`);
 
     const conn = this.peer.connect(targetRoomId, {
       reliable: true
     });
 
-    this._setupConnection(conn);
+    this._setupConnection(conn, true);
     return targetRoomId;
   }
 
   /**
-   * Configure a data connection
+   * Configure a data connection with handshake & ping
    */
-  _setupConnection(conn) {
+  _setupConnection(conn, isInitiator) {
     conn.on('open', () => {
-      console.log(`[Sync] Data channel open with: ${conn.peer}`);
-      this.connections.push(conn);
-      this._updateStatus('connected');
+      console.log(`[Sync] DataChannel OPEN with peer: ${conn.peer}`);
+      if (!this.connections.find(c => c.peer === conn.peer)) {
+        this.connections.push(conn);
+      }
+
+      this._updateStatus('connected', `Connected with peer (${this.connections.length} in room)`);
       this._notifyPeerCount();
+
+      if (this.onPeerConnected) {
+        this.onPeerConnected(conn.peer);
+      }
+
+      // Send initial handshake
+      conn.send({
+        type: 'handshake',
+        role: this.isHost ? 'host' : 'client',
+        sender: this.localPeerId,
+        timestamp: Date.now()
+      });
 
       if (this.isHost) {
         this._startHeartbeat();
       }
-
       this._startPing();
     });
 
@@ -134,16 +201,23 @@ class SyncEngine {
     });
 
     conn.on('close', () => {
-      console.log(`[Sync] Connection closed with: ${conn.peer}`);
+      console.log(`[Sync] Connection closed with peer: ${conn.peer}`);
       this.connections = this.connections.filter(c => c.peer !== conn.peer);
       this._notifyPeerCount();
+
+      if (this.onPeerDisconnected) {
+        this.onPeerDisconnected(conn.peer);
+      }
+
       if (this.connections.length === 0) {
-        this._updateStatus('waiting');
+        this._updateStatus('ready', this.isHost ? 'Waiting for friend...' : 'Disconnected from Host');
+      } else {
+        this._updateStatus('connected', `Connected with ${this.connections.length} peer(s)`);
       }
     });
 
     conn.on('error', (err) => {
-      console.error(`[Sync] Connection error with ${conn.peer}:`, err);
+      console.error(`[Sync] DataChannel error with ${conn.peer}:`, err);
     });
   }
 
@@ -154,18 +228,21 @@ class SyncEngine {
     if (!data || !data.type) return;
 
     switch (data.type) {
+      case 'handshake':
+        console.log(`[Sync] Handshake confirmed with ${conn.peer} (${data.role})`);
+        this._updateStatus('connected', `Connected with friend!`);
+        break;
+
       case 'play':
       case 'pause':
       case 'seek':
       case 'rate':
         this.isRemoteUpdate = true;
         if (this.onActionReceived) this.onActionReceived(data);
-        // Reset remote update lock after short debounce
-        setTimeout(() => { this.isRemoteUpdate = false; }, 300);
+        setTimeout(() => { this.isRemoteUpdate = false; }, 350);
         break;
 
       case 'heartbeat':
-        // Periodic drift check from host
         if (!this.isHost && this.onActionReceived) {
           this.onActionReceived(data);
         }
@@ -180,17 +257,19 @@ class SyncEngine {
         break;
 
       case 'ping':
-        conn.send({ type: 'pong', sendTime: data.sendTime });
+        try {
+          conn.send({ type: 'pong', sendTime: data.sendTime });
+        } catch (e) {}
         break;
 
       case 'pong':
         const rtt = Date.now() - data.sendTime;
-        this.lastPing = Math.round(rtt / 2);
+        this.lastPing = Math.max(1, Math.round(rtt / 2));
         if (this.onPingUpdated) this.onPingUpdated(this.lastPing);
         break;
 
       default:
-        console.log('[Sync] Unknown message:', data);
+        console.log('[Sync] Unknown message type:', data);
     }
   }
 
@@ -198,7 +277,7 @@ class SyncEngine {
    * Broadcast payload to all connected peers
    */
   broadcast(data) {
-    if (this.isRemoteUpdate) return; // Prevent echoing remote events back
+    if (this.isRemoteUpdate) return;
     if (!this.connections || this.connections.length === 0) return;
 
     for (const conn of this.connections) {
@@ -206,13 +285,13 @@ class SyncEngine {
         try {
           conn.send(data);
         } catch (e) {
-          console.error('[Sync] Broadcast error:', e);
+          console.error('[Sync] Broadcast send error:', e);
         }
       }
     }
   }
 
-  /* Sync Action Helpers */
+  /* Action Helpers */
   sendPlay(currentTime, playbackRate) {
     this.broadcast({
       type: 'play',
@@ -272,9 +351,9 @@ class SyncEngine {
   _startHeartbeat() {
     if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
     this.heartbeatTimer = setInterval(() => {
-      if (this.isHost && window.player) {
+      if (this.isHost && window.player && this.connections.length > 0) {
         const v = window.player.video;
-        if (v && !isNaN(v.duration)) {
+        if (v && !isNaN(v.duration) && v.duration > 0) {
           this.broadcast({
             type: 'heartbeat',
             time: v.currentTime,
@@ -296,15 +375,17 @@ class SyncEngine {
       if (this.connections.length > 0) {
         for (const conn of this.connections) {
           if (conn.open) {
-            conn.send({ type: 'ping', sendTime: Date.now() });
+            try {
+              conn.send({ type: 'ping', sendTime: Date.now() });
+            } catch (e) {}
           }
         }
       }
-    }, 5000);
+    }, 4000);
   }
 
-  _updateStatus(status) {
-    if (this.onStatusChange) this.onStatusChange(status);
+  _updateStatus(status, detail = '') {
+    if (this.onStatusChange) this.onStatusChange(status, detail);
   }
 
   _notifyPeerCount() {
@@ -318,6 +399,7 @@ class SyncEngine {
     if (this.pingTimer) clearInterval(this.pingTimer);
     if (this.peer) this.peer.destroy();
     this.connections = [];
+    this.peerReady = false;
   }
 }
 

@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const statusDot = document.getElementById('status-dot');
   const statusText = document.getElementById('status-text');
   const pingDisplay = document.getElementById('ping-display');
+  const toastBanner = document.getElementById('format-warning-banner');
 
   // Media Source Elements
   const tabLocal = document.getElementById('tab-local');
@@ -45,6 +46,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const fileNameText = document.getElementById('file-name-text');
   const subFileInput = document.getElementById('sub-file-input');
 
+  // Room Status Inside Setup Modal
+  const modalPeerStatus = document.getElementById('modal-peer-status');
+
   // Voice Elements
   const btnVoiceToggle = document.getElementById('btn-voice-toggle');
   const btnVoiceMute = document.getElementById('btn-voice-mute');
@@ -52,6 +56,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   let mediaLoaded = false;
   let roomJoined = false;
+
+  function showToast(msg, isSuccess = false, duration = 4000) {
+    if (!toastBanner) return;
+    toastBanner.innerText = msg;
+    toastBanner.style.background = isSuccess ? 'rgba(16, 185, 129, 0.95)' : 'rgba(239, 68, 68, 0.95)';
+    toastBanner.style.display = 'block';
+    setTimeout(() => {
+      toastBanner.style.display = 'none';
+    }, duration);
+  }
 
   /* ------------------------------------------------------------------------
      1. Media Loading (Local File & Direct URL)
@@ -108,11 +122,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Update Badge UI
     if (fileInfoBadge && fileNameText) {
       const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
-      fileNameText.innerText = `${file.name} (${sizeMb} MB)`;
+      fileNameText.innerText = `✅ Loaded: ${file.name} (${sizeMb} MB)`;
       fileInfoBadge.classList.add('active');
     }
 
-    checkDismissSetup();
+    showToast(`Movie loaded: ${file.name}`, true, 3000);
+    updateStartButtonState();
   }
 
   // Direct URL Input
@@ -124,11 +139,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       mediaLoaded = true;
 
       if (fileInfoBadge && fileNameText) {
-        fileNameText.innerText = `Stream: ${url.split('/').pop().split('?')[0] || url}`;
+        fileNameText.innerText = `✅ Stream: ${url.split('/').pop().split('?')[0] || url}`;
         fileInfoBadge.classList.add('active');
       }
 
-      checkDismissSetup();
+      showToast('Stream URL loaded', true, 3000);
+      updateStartButtonState();
     });
   }
 
@@ -141,7 +157,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const reader = new FileReader();
       reader.onload = (event) => {
         subtitles.parse(event.target.result);
-        alert(`Loaded subtitle: ${file.name}`);
+        showToast(`Subtitles loaded: ${file.name}`, true, 3000);
       };
       reader.readAsText(file);
     });
@@ -153,16 +169,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (btnCreateRoom) {
     btnCreateRoom.addEventListener('click', async () => {
       btnCreateRoom.innerText = 'Creating...';
+      btnCreateRoom.disabled = true;
       try {
         const roomId = await sync.createRoom();
         roomJoined = true;
         updateRoomUI(roomId);
         voice.initCallListener();
-        checkDismissSetup();
+        showToast(`Room created: ${roomId}. Copy the link and send to your friend!`, true, 5000);
+        updateStartButtonState();
       } catch (err) {
-        alert('Could not create room. Please try again.');
+        console.error('Create room error:', err);
+        showToast('Could not create room. Please try again.', false);
       } finally {
-        btnCreateRoom.innerText = 'Create Room';
+        btnCreateRoom.innerText = 'Create New Room';
+        btnCreateRoom.disabled = false;
       }
     });
   }
@@ -171,20 +191,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     btnJoinRoom.addEventListener('click', async () => {
       const code = inputRoomCode.value.trim();
       if (!code) {
-        alert('Please enter a valid room code.');
+        showToast('Please enter a valid room code.', false);
         return;
       }
       btnJoinRoom.innerText = 'Joining...';
+      btnJoinRoom.disabled = true;
       try {
         await sync.joinRoom(code);
         roomJoined = true;
         updateRoomUI(code);
         voice.initCallListener();
-        checkDismissSetup();
+        showToast(`Joining room: ${code}...`, true, 3000);
+        updateStartButtonState();
       } catch (err) {
-        alert('Could not join room. Check the room code and try again.');
+        console.error('Join room error:', err);
+        showToast('Could not join room. Make sure Host created the room first.', false);
       } finally {
         btnJoinRoom.innerText = 'Join Room';
+        btnJoinRoom.disabled = false;
       }
     });
   }
@@ -195,18 +219,21 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (autoRoom) {
     console.log(`[App] Auto-joining room from URL: ${autoRoom}`);
     inputRoomCode.value = autoRoom;
+    updateRoomUI(autoRoom);
     sync.joinRoom(autoRoom).then(() => {
       roomJoined = true;
-      updateRoomUI(autoRoom);
       voice.initCallListener();
-    }).catch(e => console.error('Auto-join error:', e));
+      updateStartButtonState();
+    }).catch(e => {
+      console.error('Auto-join error:', e);
+      showToast('Could not connect to host. Make sure host is online.', false);
+    });
   }
 
   function updateRoomUI(roomId) {
     if (roomDisplay) {
       roomDisplay.innerText = roomId;
     }
-    // Update browser URL without reload
     const newUrl = `${window.location.protocol}//${window.location.host}${window.location.pathname}?room=${roomId}`;
     window.history.replaceState({ path: newUrl }, '', newUrl);
   }
@@ -214,26 +241,45 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Copy Shareable Invite Link
   if (btnCopyLink) {
     btnCopyLink.addEventListener('click', () => {
+      if (!sync.roomId && !autoRoom) {
+        showToast('Please click "Create New Room" first!', false);
+        return;
+      }
       const shareUrl = window.location.href;
       navigator.clipboard.writeText(shareUrl).then(() => {
         const originalText = btnCopyLink.innerHTML;
         btnCopyLink.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg> Copied!`;
+        showToast('Link copied! Send it to your friend.', true, 3000);
         setTimeout(() => {
           btnCopyLink.innerHTML = originalText;
         }, 2000);
+      }).catch(() => {
+        showToast(`Your room link: ${window.location.href}`, true, 6000);
       });
     });
   }
 
+  // Dismiss Setup manually by user
   if (btnDismissSetup) {
     btnDismissSetup.addEventListener('click', () => {
       setupOverlay.classList.add('hidden');
+      // Ensure video starts explicitly paused
+      player.video.pause();
     });
   }
 
-  function checkDismissSetup() {
+  function updateStartButtonState() {
+    if (!btnDismissSetup) return;
     if (mediaLoaded && roomJoined) {
-      setupOverlay.classList.add('hidden');
+      btnDismissSetup.innerText = '▶ Enter Theater & Watch Together';
+      btnDismissSetup.classList.add('btn-gradient');
+      btnDismissSetup.disabled = false;
+    } else if (mediaLoaded && !roomJoined) {
+      btnDismissSetup.innerText = '⚠️ Please Create or Join a Room (Step 2)';
+    } else if (!mediaLoaded && roomJoined) {
+      btnDismissSetup.innerText = '⚠️ Please Choose Movie File (Step 1)';
+    } else {
+      btnDismissSetup.innerText = 'Complete Steps 1 & 2 to Start Watching';
     }
   }
 
@@ -246,24 +292,59 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   /* ------------------------------------------------------------------------
-     3. Sync Status & Ping Handlers
+     3. Sync Status & Peer Join / Leave Handlers
      ------------------------------------------------------------------------ */
-  sync.onStatusChange = (status) => {
+  sync.onStatusChange = (status, detail) => {
     if (!statusDot || !statusText) return;
 
     if (status === 'connected') {
       statusDot.className = 'status-dot connected';
-      statusText.innerText = 'Connected';
+      statusText.innerText = 'Connected with Friend';
+      if (modalPeerStatus) {
+        modalPeerStatus.innerHTML = '<span style="color: var(--accent-success); font-weight: bold;">🎉 Friend is in the room! Both ready to watch.</span>';
+      }
     } else if (status === 'connecting') {
       statusDot.className = 'status-dot connecting';
-      statusText.innerText = 'Connecting...';
+      statusText.innerText = detail || 'Connecting...';
+      if (modalPeerStatus) {
+        modalPeerStatus.innerHTML = '<span style="color: var(--accent-warning);">⏳ Connecting to peer...</span>';
+      }
     } else if (status === 'ready') {
       statusDot.className = 'status-dot connecting';
-      statusText.innerText = 'Room Ready (Waiting for Friend)';
+      statusText.innerText = sync.isHost ? 'Waiting for Friend...' : 'Room Ready';
+      if (modalPeerStatus) {
+        modalPeerStatus.innerHTML = '<span style="color: var(--accent-warning);">⏳ Waiting for your friend to join... (Share link above)</span>';
+      }
     } else {
       statusDot.className = 'status-dot';
-      statusText.innerText = 'Disconnected';
+      statusText.innerText = detail || 'Disconnected';
+      if (modalPeerStatus) {
+        modalPeerStatus.innerHTML = '<span style="color: var(--text-muted);">Not connected to anyone yet.</span>';
+      }
     }
+  };
+
+  sync.onPeerConnected = (peerId) => {
+    console.log('[App] Peer connected:', peerId);
+    showToast('🎉 Friend has joined your room! Play/pause/seek are now in sync.', true, 5000);
+    chat.playNotificationSound();
+    chat.appendMessage({
+      text: 'Friend has joined the room! Synchronized playback is active.',
+      sender: 'System',
+      timestamp: Date.now(),
+      isMe: false
+    });
+  };
+
+  sync.onPeerDisconnected = (peerId) => {
+    console.log('[App] Peer disconnected:', peerId);
+    showToast('⚠️ Friend disconnected from room.', false, 4000);
+    chat.appendMessage({
+      text: 'Friend disconnected from the room.',
+      sender: 'System',
+      timestamp: Date.now(),
+      isMe: false
+    });
   };
 
   sync.onPingUpdated = (pingMs) => {
@@ -274,9 +355,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   sync.onFileInfoReceived = (fileInfo) => {
     console.log('[Sync] Peer file info:', fileInfo);
-    // Notify peer if file sizes or durations differ significantly
     if (player.video.duration && Math.abs(player.video.duration - fileInfo.duration) > 5) {
-      alert(`Notice: Your friend's video duration differs by more than 5 seconds (${fileInfo.name}). Make sure you both have the exact same file for seamless sync.`);
+      showToast(`Warning: Friend's movie duration differs by >5s (${fileInfo.name}). Make sure both use the same file.`, false, 6000);
+    } else {
+      showToast(`Friend loaded: ${fileInfo.name}`, true, 4000);
     }
   };
 
@@ -292,6 +374,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           btnVoiceToggle.innerText = 'Leave Voice';
           btnVoiceToggle.classList.add('active');
           if (btnVoiceMute) btnVoiceMute.style.display = 'flex';
+          showToast('Voice call connected! Speak to test your microphone.', true, 4000);
         } else {
           btnVoiceToggle.innerText = 'Join Voice';
         }
@@ -301,6 +384,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         btnVoiceToggle.classList.remove('active');
         if (btnVoiceMute) btnVoiceMute.style.display = 'none';
         if (voiceSpeakingPulse) voiceSpeakingPulse.classList.remove('talking');
+        showToast('Left voice call.', false, 2000);
       }
     });
   }
