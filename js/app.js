@@ -259,8 +259,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   async function performJoinRoom(code, btnElement) {
+    code = String(code || '').trim();
     if (!code) {
-      showToast('Please enter a room code.', false);
+      showToast('Please enter the 3-digit room code.', false);
       return;
     }
     if (btnElement) {

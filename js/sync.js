@@ -118,9 +118,9 @@ class SyncEngine {
         console.warn('[Sync] Peer error event:', err.type, err.message);
 
         if (err.type === 'unavailable-id') {
-          // Collision: retry with fresh random code
-          const newCode = 'wt-' + Math.random().toString(36).substring(2, 8);
-          console.log('[Sync] Room code taken, trying:', newCode);
+          // Collision: retry with fresh 3-digit random number
+          const newCode = String(Math.floor(100 + Math.random() * 900));
+          console.log('[Sync] Room code taken, trying fresh 3-digit code:', newCode);
           this.roomId = newCode;
           this.init(newCode).then(resolve).catch(reject);
           return;
@@ -146,10 +146,10 @@ class SyncEngine {
   }
 
   /**
-   * Host creates a room
+   * Host creates a room (3-digit random number only)
    */
   async createRoom() {
-    const randomCode = 'wt-' + Math.random().toString(36).substring(2, 8);
+    const randomCode = String(Math.floor(100 + Math.random() * 900));
     this.isHost = true;
     this.roomId = randomCode;
 
