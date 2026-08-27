@@ -8,8 +8,8 @@
   <title>Watch Together by Likhon</title>
   
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='25' fill='%236366f1'/><polygon points='38,28 72,50 38,72' fill='white'/></svg>">
-  <link rel="manifest" href="manifest.json?v=3.0">
-  <link rel="stylesheet" href="css/style.css?v=3.0">
+  <link rel="manifest" href="manifest.json?v=3.1">
+  <link rel="stylesheet" href="css/style.css?v=3.1">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -33,6 +33,9 @@
   <!-- ====================================================================
        App Header & Quick Controls
        ==================================================================== -->
+  <!-- ====================================================================
+       App Header
+       ==================================================================== -->
   <header class="app-header">
     <div class="brand">
       <div class="brand-icon">
@@ -44,42 +47,28 @@
       <span class="brand-author">by Likhon</span>
     </div>
 
-    <!-- Status & Room Badge -->
+    <!-- Status & Room Badge (Desktop) -->
     <div class="connection-badge">
       <div class="status-dot" id="status-dot"></div>
       <span id="status-text">Not Connected</span>
       <span class="ping-display" id="ping-display"></span>
     </div>
 
-    <!-- Header Actions (Voice, Room, Chat) -->
+    <!-- Header Actions -->
     <div class="header-actions">
-      <!-- Voice Call Widget -->
-      <div class="voice-bar">
-        <button class="voice-btn" id="btn-voice-toggle">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-            <line x1="12" y1="19" x2="12" y2="23"/>
-            <line x1="8" y1="23" x2="16" y2="23"/>
-          </svg>
-          <span>Join Voice</span>
-        </button>
-        <button class="voice-btn muted" id="btn-voice-mute" style="display: none;">
-          Mute Mic
-        </button>
-        <div class="speaking-pulse" id="voice-speaking-pulse"></div>
-      </div>
-
-      <!-- Change Video / Room Button -->
-      <button class="btn" id="btn-open-setup" title="Change Video or Room">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="3"/>
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      <!-- Voice Call Button -->
+      <button class="voice-btn" id="btn-voice-toggle" title="Toggle Voice Chat">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+          <line x1="12" y1="19" x2="12" y2="23"/>
+          <line x1="8" y1="23" x2="16" y2="23"/>
         </svg>
+        <span class="voice-text">Voice</span>
       </button>
 
-      <!-- Toggle Chat Drawer Button -->
-      <button class="btn btn-icon-only" id="chat-toggle-btn" title="Open Chat" style="position: relative;">
+      <!-- Toggle Chat Drawer (Desktop) -->
+      <button class="btn btn-icon-only desktop-only" id="chat-toggle-btn" title="Open Chat" style="position: relative;">
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
         </svg>
@@ -89,7 +78,7 @@
   </header>
 
   <!-- ====================================================================
-       Persistent Room Strip (Always Visible)
+       Persistent Room Strip (Desktop Only)
        ==================================================================== -->
   <div class="room-strip" id="room-strip">
     <div class="room-strip-left">
@@ -101,11 +90,7 @@
       <button class="btn-strip" id="strip-btn-pick-file">📁 Select File</button>
     </div>
     <div class="room-strip-right">
-      <div class="strip-status">
-        <span class="status-dot" id="status-dot"></span>
-        <span id="status-text">Disconnected</span>
-        <span class="ping-display" id="ping-display"></span>
-      </div>
+      <span style="font-size: 0.75rem; color: var(--text-muted);">Sync Relay: Metered.ca TURN</span>
     </div>
   </div>
 
@@ -130,6 +115,8 @@
           <button class="btn btn-primary" id="btn-prompt-pick" style="padding: 0.65rem 1.3rem; font-size: 0.9rem; font-weight: 700;">
             📁 Choose Movie File
           </button>
+          <input type="file" id="file-input" accept="video/*,.mkv,.mp4,.webm" style="display: none;">
+          <input type="file" id="sub-file-input" accept=".srt,.vtt" style="display: none;">
         </div>
 
         <!-- Big Center "Ready to Play" Card -->
@@ -428,21 +415,39 @@
           <div class="mp-info-card">
             <div class="mp-info-row">
               <span>Room Code:</span>
-              <strong id="mp-info-code" style="color: var(--accent-secondary); font-family: monospace; font-size: 1rem;">None</strong>
-            </div>
-            <div class="mp-info-row">
-              <span>TURN Relay:</span>
-              <strong style="color: var(--accent-success);">Metered.ca Global (Active)</strong>
+              <strong id="mp-info-code" style="color: var(--accent-secondary); font-family: monospace; font-size: 1.05rem;">None</strong>
             </div>
             <div class="mp-info-row">
               <span>Peer Status:</span>
-              <strong id="mp-info-status">Not connected to room</strong>
+              <strong id="mp-info-status">Not in any room</strong>
+            </div>
+            <div class="mp-info-row">
+              <span>TURN Relay:</span>
+              <strong style="color: var(--accent-success);">Metered.ca Global (Online)</strong>
             </div>
           </div>
-          <button class="btn btn-gradient" id="mp-btn-create-room" style="width: 100%; margin-top: 0.75rem; padding: 0.75rem;">
-            Create New Room
-          </button>
-          <button class="btn" id="mp-btn-reconnect" style="width: 100%; margin-top: 0.5rem; display: none; background: rgba(239,68,68,0.2); border-color: var(--accent-danger); color: #fca5a5;">
+
+          <!-- Join Room Form -->
+          <div style="display: flex; gap: 0.4rem; margin-top: 0.75rem;">
+            <input type="text" class="text-input" id="input-room-code" placeholder="Enter Room Code" style="flex: 1; font-size: 0.85rem; min-height: 42px;">
+            <button class="btn btn-primary" id="btn-join-room" style="white-space: nowrap; padding: 0.5rem 1rem; min-height: 42px; font-weight: 700;">Join</button>
+          </div>
+
+          <!-- Create Room & Copy Link -->
+          <div style="display: flex; gap: 0.4rem; margin-top: 0.5rem;">
+            <button class="btn btn-gradient" id="btn-create-room" style="flex: 1; padding: 0.65rem; font-weight: 700; min-height: 42px;">
+              ➕ Create Room
+            </button>
+            <button class="btn" id="btn-copy-link" title="Copy Invite Link" style="min-height: 42px; padding: 0.5rem 0.85rem;">
+              📋 Copy Link
+            </button>
+          </div>
+
+          <!-- Hidden compatibility elements for app.js references -->
+          <span id="room-id-display" style="display: none;">None</span>
+          <div id="modal-peer-status" style="display: none;"></div>
+
+          <button class="btn" id="mp-btn-reconnect" style="width: 100%; margin-top: 0.5rem; display: none; background: rgba(239,68,68,0.2); border-color: var(--accent-danger); color: #fca5a5; min-height: 40px;">
             🔄 Reconnect
           </button>
         </div>
@@ -481,118 +486,14 @@
     </aside>
   </main>
 
-  <!-- ====================================================================
-       Setup Modal Overlay (Select Media & Join Room)
-       ==================================================================== -->
-  <div class="setup-overlay" id="setup-overlay">
-    <div class="setup-card">
-      <h1 class="setup-title">Watch Together</h1>
-      <p class="setup-subtitle">Engineered by Likhon for synced movie watching across PC & Android with 0 MB streaming data.</p>
-
-      <!-- Step 1: Select Video Source -->
-      <div class="setup-step">
-        <div class="setup-step-header">
-          <span class="step-number">1</span>
-          <span>Choose Your Movie File</span>
-        </div>
-
-        <div class="tab-group">
-          <button class="tab-btn active" id="tab-local">Local Offline File (0 Data)</button>
-          <button class="tab-btn" id="tab-url">Direct Stream URL</button>
-        </div>
-
-        <!-- Local File Tab -->
-        <div id="panel-local">
-          <div class="dropzone" id="dropzone">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="17 8 12 3 7 8"/>
-              <line x1="12" y1="3" x2="12" y2="15"/>
-            </svg>
-            <p><strong>Click or Drag & Drop</strong> your downloaded movie file here</p>
-            <span>Supports MP4, WebM, MKV (Plays directly from PC/Android storage)</span>
-          </div>
-          <input type="file" id="file-input" accept="video/*,.mkv,.mp4,.webm" style="display: none;">
-        </div>
-
-        <!-- URL Stream Tab -->
-        <div id="panel-url" style="display: none;">
-          <div class="input-group">
-            <input type="url" class="text-input" id="url-input" placeholder="Paste direct download / stream link (MP4, etc.)">
-            <button class="btn btn-primary" id="btn-load-url">Load</button>
-          </div>
-        </div>
-
-        <!-- Loaded File Info Badge -->
-        <div class="file-info-badge" id="file-info-badge">
-          <span id="file-name-text">No file loaded</span>
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M20 6L9 17l-5-5"/>
-          </svg>
-        </div>
-
-        <!-- Subtitle File Loader -->
-        <div style="margin-top: 0.75rem; display: flex; align-items: center; justify-content: space-between;">
-          <span style="font-size: 0.8rem; color: var(--text-secondary);">Subtitles (.srt / .vtt):</span>
-          <label class="btn" style="padding: 0.3rem 0.6rem; font-size: 0.75rem; cursor: pointer;">
-            Choose Subtitle File
-            <input type="file" id="sub-file-input" accept=".srt,.vtt" style="display: none;">
-          </label>
-        </div>
-      </div>
-
-      <!-- Step 2: Room Creation & Connection -->
-      <div class="setup-step">
-        <div class="setup-step-header">
-          <span class="step-number">2</span>
-          <span>Connect With Your Friend</span>
-        </div>
-
-        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-          <!-- Host Room -->
-          <div style="display: flex; gap: 0.5rem;">
-            <button class="btn btn-gradient" id="btn-create-room" style="flex: 1;">Create New Room</button>
-            <button class="btn" id="btn-copy-link" title="Copy Invite Link">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-              </svg>
-              <span>Copy Link</span>
-            </button>
-          </div>
-
-          <!-- Join Existing Room -->
-          <div class="input-group">
-            <input type="text" class="text-input" id="input-room-code" placeholder="Enter 6-character Room Code">
-            <button class="btn btn-primary" id="btn-join-room">Join Room</button>
-          </div>
-
-          <div style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 4px 0;">
-            Room Code: <strong id="room-id-display" style="color: var(--accent-secondary); font-size: 0.95rem;">None</strong>
-          </div>
-
-          <!-- Live Peer Status inside Setup Card -->
-          <div id="modal-peer-status" style="font-size: 0.8rem; text-align: center; padding: 6px 10px; background: rgba(255,255,255,0.04); border-radius: var(--radius-sm); border: 1px dashed var(--border-color);">
-            Not connected to any room yet. Click "Create New Room" or enter a code.
-          </div>
-        </div>
-      </div>
-
-      <!-- Enter Theater Button -->
-      <button class="btn btn-primary" id="btn-dismiss-setup" style="width: 100%; padding: 0.85rem; font-size: 0.95rem; font-weight: 700;">
-        Complete Steps 1 & 2 to Start Watching
-      </button>
-    </div>
-  </div>
-
   <!-- Scripts (Cache Busted) -->
-  <script src="js/peerjs.min.js?v=3.0"></script>
-  <script src="js/srt-parser.js?v=3.0"></script>
-  <script src="js/sync.js?v=3.0"></script>
-  <script src="js/voice.js?v=3.0"></script>
-  <script src="js/chat.js?v=3.0"></script>
-  <script src="js/player.js?v=3.0"></script>
-  <script src="js/app.js?v=3.0"></script>
+  <script src="js/peerjs.min.js?v=3.1"></script>
+  <script src="js/srt-parser.js?v=3.1"></script>
+  <script src="js/sync.js?v=3.1"></script>
+  <script src="js/voice.js?v=3.1"></script>
+  <script src="js/chat.js?v=3.1"></script>
+  <script src="js/player.js?v=3.1"></script>
+  <script src="js/app.js?v=3.1"></script>
 
   <!-- PWA Service Worker Registration -->
   <script>

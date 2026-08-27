@@ -969,6 +969,13 @@ video#main-video {
 }
 
 /* --------------------------------------------------------------------------
+   Setup Overlay (Removed in Favor of In-Page Workflow)
+   -------------------------------------------------------------------------- */
+.setup-overlay {
+  display: none !important;
+}
+
+/* --------------------------------------------------------------------------
    Mobile Adaptations (Phones & Small Tablets)
    -------------------------------------------------------------------------- */
 @media (max-width: 768px) {
@@ -976,15 +983,42 @@ video#main-video {
   .app-header {
     padding: 0 0.75rem;
     height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    overflow: hidden;
   }
-  .app-header .connection-badge {
-    display: none;
+  .brand {
+    gap: 0.4rem;
+    flex-shrink: 0;
+    min-width: 0;
+  }
+  .brand-icon {
+    width: 28px;
+    height: 28px;
   }
   .brand-title {
-    font-size: 0.95rem;
+    font-size: 0.92rem;
+    font-weight: 700;
+    white-space: nowrap;
   }
   .brand-author {
-    display: none;
+    display: none !important;
+  }
+  .connection-badge {
+    display: none !important;
+  }
+  .desktop-only {
+    display: none !important;
+  }
+  .header-actions {
+    gap: 0.35rem;
+    flex-shrink: 0;
+  }
+  .voice-btn {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.72rem;
   }
 
   /* Hide the double top strip on mobile — integrated cleanly into panel */
