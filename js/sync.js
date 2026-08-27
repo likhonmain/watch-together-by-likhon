@@ -1,7 +1,7 @@
 /**
  * Watch Together by Likhon — P2P Synchronization Engine (WebRTC via PeerJS)
- * Features Open Relay Project TURN servers for guaranteed mobile/NAT traversal,
- * bidirectional handshake, collision auto-retry, and drift correction.
+ * Ultra-resilient connection manager with Google STUN cluster, auto-retry,
+ * NAT keep-alive, visibility reconnection, and WakeLock support.
  */
 
 class SyncEngine {
@@ -11,26 +11,31 @@ class SyncEngine {
     this.isHost = false;
     this.roomId = null;
     this.localPeerId = null;
-    this.isRemoteUpdate = false; // Flag to prevent infinite echo loops
+    this.isRemoteUpdate = false;
     this.lastPing = 0;
     this.heartbeatTimer = null;
     this.pingTimer = null;
+    this.keepAliveTimer = null;
+    this.connectTimeoutTimer = null;
     this.peerReady = false;
+    this.wakeLock = null;
+    this.retryAttempts = 0;
 
     // Callbacks
-    this.onStatusChange = null;   // (status: string, detail?: string) => void
-    this.onPeerConnected = null;  // (peerId: string) => void
-    this.onPeerDisconnected = null; // (peerId: string) => void
-    this.onActionReceived = null; // (actionData: object) => void
-    this.onChatReceived = null;   // (chatData: object) => void
-    this.onFileInfoReceived = null; // (fileInfo: object) => void
-    this.onPingUpdated = null;    // (pingMs: number) => void
-    this.onPeerCountChanged = null; // (count: number) => void
+    this.onStatusChange = null;
+    this.onPeerConnected = null;
+    this.onPeerDisconnected = null;
+    this.onActionReceived = null;
+    this.onChatReceived = null;
+    this.onFileInfoReceived = null;
+    this.onPingUpdated = null;
+    this.onPeerCountChanged = null;
+
+    this._setupVisibilityListener();
   }
 
   /**
-   * Get production-grade WebRTC configuration with Google STUN + Open Relay TURN
-   * (Essential for mobile 4G/5G carriers and Symmetric NAT)
+   * Fast, reliable Google STUN cluster (clean, zero 400 error delay)
    */
   _getPeerConfig() {
     return {
@@ -39,29 +44,17 @@ class SyncEngine {
         iceServers: [
           { urls: 'stun:stun.l.google.com:19302' },
           { urls: 'stun:stun1.l.google.com:19302' },
-          { urls: 'stun:openrelay.metered.ca:80' },
-          {
-            urls: 'turn:openrelay.metered.ca:80',
-            username: 'openrelayproject',
-            credential: 'openrelayproject'
-          },
-          {
-            urls: 'turn:openrelay.metered.ca:443',
-            username: 'openrelayproject',
-            credential: 'openrelayproject'
-          },
-          {
-            urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-            username: 'openrelayproject',
-            credential: 'openrelayproject'
-          }
-        ]
+          { urls: 'stun:stun2.l.google.com:19302' },
+          { urls: 'stun:stun3.l.google.com:19302' },
+          { urls: 'stun:stun4.l.google.com:19302' }
+        ],
+        iceCandidatePoolSize: 10
       }
     };
   }
 
   /**
-   * Initialize PeerJS instance
+   * Initialize PeerJS instance with clean error handling and reconnects
    */
   init(customId = null) {
     return new Promise((resolve, reject) => {
@@ -72,8 +65,8 @@ class SyncEngine {
       this.peerReady = false;
       const options = this._getPeerConfig();
 
-      console.log(`[Sync] Initializing PeerJS${customId ? ' with ID: ' + customId : ''}...`);
-      this._updateStatus('connecting', 'Connecting to signaling server...');
+      console.log(`[Sync] Initializing Peer${customId ? ' with room: ' + customId : ''}...`);
+      this._updateStatus('connecting', 'Connecting to signaling network...');
 
       try {
         if (customId) {
@@ -82,57 +75,60 @@ class SyncEngine {
           this.peer = new Peer(options);
         }
       } catch (err) {
-        console.error('[Sync] Peer constructor failed:', err);
-        this._updateStatus('error', 'Could not initialize Peer connection.');
+        console.error('[Sync] Peer constructor error:', err);
+        this._updateStatus('error', 'Peer initialization failed.');
         return reject(err);
       }
 
       this.peer.on('open', (id) => {
         this.localPeerId = id;
         this.peerReady = true;
-        console.log(`[Sync] Peer successfully opened with ID: ${id}`);
-        this._updateStatus('ready', `Room ready: ${id}`);
+        console.log(`[Sync] Peer opened successfully. ID: ${id}`);
+        this._updateStatus('ready', this.isHost ? `Room Ready: ${id}` : 'Connected to network');
+        this._acquireWakeLock();
         resolve(id);
       });
 
       this.peer.on('connection', (conn) => {
-        console.log(`[Sync] Incoming peer connection from: ${conn.peer}`);
+        console.log(`[Sync] Incoming connection from peer: ${conn.peer}`);
         this._setupConnection(conn, false);
       });
 
       this.peer.on('error', (err) => {
-        console.error('[Sync] Peer error:', err.type, err.message);
+        console.warn('[Sync] Peer error event:', err.type, err.message);
 
         if (err.type === 'unavailable-id') {
-          // If custom ID is taken, auto-retry with a unique code
-          console.warn('[Sync] Room ID taken, retrying with new ID...');
+          // Collision: retry with fresh random code
           const newCode = 'wt-' + Math.random().toString(36).substring(2, 8);
+          console.log('[Sync] Room code taken, trying:', newCode);
           this.roomId = newCode;
           this.init(newCode).then(resolve).catch(reject);
           return;
         } else if (err.type === 'peer-unavailable') {
-          this._updateStatus('error', 'Room not found. Make sure the Host has created the room and is online.');
+          this._updateStatus('error', 'Host room not found or Host is offline.');
+        } else if (err.type === 'network') {
+          this._updateStatus('error', 'Network error. Check internet connection.');
         } else {
-          this._updateStatus('error', err.type || 'Connection error');
+          this._updateStatus('error', err.type || 'Connection issue');
         }
         reject(err);
       });
 
       this.peer.on('disconnected', () => {
-        console.warn('[Sync] Peer disconnected from broker server. Reconnecting...');
-        this._updateStatus('disconnected', 'Signaling disconnected');
+        console.warn('[Sync] Signaling server disconnected. Attempting reconnect...');
         if (this.peer && !this.peer.destroyed) {
-          this.peer.reconnect();
+          try {
+            this.peer.reconnect();
+          } catch (e) {}
         }
       });
     });
   }
 
   /**
-   * Host creates a new room
+   * Host creates a room
    */
   async createRoom() {
-    // Generate clean 6-character room code
     const randomCode = 'wt-' + Math.random().toString(36).substring(2, 8);
     this.isHost = true;
     this.roomId = randomCode;
@@ -143,57 +139,81 @@ class SyncEngine {
   }
 
   /**
-   * Join an existing room code
+   * Client joins an existing room with connection timeout & retry
    */
   async joinRoom(targetRoomId) {
     targetRoomId = targetRoomId.trim();
     this.isHost = false;
     this.roomId = targetRoomId;
+    this.retryAttempts = 0;
 
     if (!this.peer || this.peer.destroyed || !this.peerReady) {
       await this.init();
     }
 
-    this._updateStatus('connecting', `Connecting to room: ${targetRoomId}...`);
-    console.log(`[Sync] Initiating connection to room: ${targetRoomId}`);
+    this._connectToHostWithRetry(targetRoomId);
+    return targetRoomId;
+  }
+
+  _connectToHostWithRetry(targetRoomId) {
+    this._updateStatus('connecting', `Connecting to ${targetRoomId}...`);
+    console.log(`[Sync] Connecting to room ${targetRoomId} (Attempt ${this.retryAttempts + 1})`);
 
     const conn = this.peer.connect(targetRoomId, {
       reliable: true
     });
 
     this._setupConnection(conn, true);
-    return targetRoomId;
+
+    // Timeout guard: If connection isn't open in 7 seconds, retry
+    clearTimeout(this.connectTimeoutTimer);
+    this.connectTimeoutTimer = setTimeout(() => {
+      if (this.connections.length === 0 && this.retryAttempts < 3) {
+        this.retryAttempts++;
+        console.log(`[Sync] Connection timed out. Retrying attempt ${this.retryAttempts}...`);
+        this._updateStatus('connecting', `Retrying connection (Attempt ${this.retryAttempts + 1}/3)...`);
+        this._connectToHostWithRetry(targetRoomId);
+      } else if (this.connections.length === 0) {
+        this._updateStatus('error', 'Could not reach Host. Make sure Host has the webpage open on screen.');
+      }
+    }, 7000);
   }
 
   /**
-   * Configure a data connection with handshake & ping
+   * Setup active connection with bidirectional handshake & keep-alive
    */
   _setupConnection(conn, isInitiator) {
     conn.on('open', () => {
       console.log(`[Sync] DataChannel OPEN with peer: ${conn.peer}`);
+      clearTimeout(this.connectTimeoutTimer);
+      this.retryAttempts = 0;
+
       if (!this.connections.find(c => c.peer === conn.peer)) {
         this.connections.push(conn);
       }
 
-      this._updateStatus('connected', `Connected with peer (${this.connections.length} in room)`);
+      this._updateStatus('connected', `Connected with friend!`);
       this._notifyPeerCount();
 
       if (this.onPeerConnected) {
         this.onPeerConnected(conn.peer);
       }
 
-      // Send initial handshake
-      conn.send({
-        type: 'handshake',
-        role: this.isHost ? 'host' : 'client',
-        sender: this.localPeerId,
-        timestamp: Date.now()
-      });
+      // Initial Handshake
+      try {
+        conn.send({
+          type: 'handshake',
+          role: this.isHost ? 'host' : 'client',
+          sender: this.localPeerId,
+          timestamp: Date.now()
+        });
+      } catch (e) {}
 
       if (this.isHost) {
         this._startHeartbeat();
       }
       this._startPing();
+      this._startKeepAlive();
     });
 
     conn.on('data', (data) => {
@@ -201,7 +221,7 @@ class SyncEngine {
     });
 
     conn.on('close', () => {
-      console.log(`[Sync] Connection closed with peer: ${conn.peer}`);
+      console.log(`[Sync] DataChannel closed with peer: ${conn.peer}`);
       this.connections = this.connections.filter(c => c.peer !== conn.peer);
       this._notifyPeerCount();
 
@@ -210,27 +230,31 @@ class SyncEngine {
       }
 
       if (this.connections.length === 0) {
-        this._updateStatus('ready', this.isHost ? 'Waiting for friend...' : 'Disconnected from Host');
+        this._updateStatus('ready', this.isHost ? 'Friend disconnected. Waiting...' : 'Connection closed. Tap Reconnect.');
       } else {
         this._updateStatus('connected', `Connected with ${this.connections.length} peer(s)`);
       }
     });
 
     conn.on('error', (err) => {
-      console.error(`[Sync] DataChannel error with ${conn.peer}:`, err);
+      console.warn(`[Sync] DataChannel error with ${conn.peer}:`, err);
     });
   }
 
   /**
-   * Handle incoming sync messages
+   * Process incoming messages
    */
   _handleIncomingData(data, conn) {
     if (!data || !data.type) return;
 
     switch (data.type) {
       case 'handshake':
-        console.log(`[Sync] Handshake confirmed with ${conn.peer} (${data.role})`);
-        this._updateStatus('connected', `Connected with friend!`);
+        console.log(`[Sync] Handshake confirmed from ${conn.peer}`);
+        this._updateStatus('connected', 'Connected with friend!');
+        break;
+
+      case 'keepalive':
+        // UDP NAT hole-punch keep-alive
         break;
 
       case 'play':
@@ -267,15 +291,9 @@ class SyncEngine {
         this.lastPing = Math.max(1, Math.round(rtt / 2));
         if (this.onPingUpdated) this.onPingUpdated(this.lastPing);
         break;
-
-      default:
-        console.log('[Sync] Unknown message type:', data);
     }
   }
 
-  /**
-   * Broadcast payload to all connected peers
-   */
   broadcast(data) {
     if (this.isRemoteUpdate) return;
     if (!this.connections || this.connections.length === 0) return;
@@ -285,69 +303,56 @@ class SyncEngine {
         try {
           conn.send(data);
         } catch (e) {
-          console.error('[Sync] Broadcast send error:', e);
+          console.warn('[Sync] Broadcast error:', e);
         }
       }
     }
   }
 
-  /* Action Helpers */
   sendPlay(currentTime, playbackRate) {
-    this.broadcast({
-      type: 'play',
-      time: currentTime,
-      rate: playbackRate,
-      timestamp: Date.now()
-    });
+    this.broadcast({ type: 'play', time: currentTime, rate: playbackRate, timestamp: Date.now() });
   }
 
   sendPause(currentTime) {
-    this.broadcast({
-      type: 'pause',
-      time: currentTime,
-      timestamp: Date.now()
-    });
+    this.broadcast({ type: 'pause', time: currentTime, timestamp: Date.now() });
   }
 
   sendSeek(currentTime) {
-    this.broadcast({
-      type: 'seek',
-      time: currentTime,
-      timestamp: Date.now()
-    });
+    this.broadcast({ type: 'seek', time: currentTime, timestamp: Date.now() });
   }
 
   sendRate(rate) {
-    this.broadcast({
-      type: 'rate',
-      rate: rate,
-      timestamp: Date.now()
-    });
+    this.broadcast({ type: 'rate', rate: rate, timestamp: Date.now() });
   }
 
   sendChat(text, sender) {
-    const msg = {
-      type: 'chat',
-      text: text,
-      sender: sender,
-      timestamp: Date.now()
-    };
+    const msg = { type: 'chat', text: text, sender: sender, timestamp: Date.now() };
     this.broadcast(msg);
     return msg;
   }
 
   sendFileInfo(name, size, duration) {
-    this.broadcast({
-      type: 'file_info',
-      name: name,
-      size: size,
-      duration: duration
-    });
+    this.broadcast({ type: 'file_info', name: name, size: size, duration: duration });
   }
 
   /**
-   * Periodic heartbeat from host to clients (drift correction)
+   * NAT Keep-Alive packet every 2.5s (prevents router/cellular NAT timeout)
    */
+  _startKeepAlive() {
+    if (this.keepAliveTimer) clearInterval(this.keepAliveTimer);
+    this.keepAliveTimer = setInterval(() => {
+      if (this.connections.length > 0) {
+        for (const conn of this.connections) {
+          if (conn.open) {
+            try {
+              conn.send({ type: 'keepalive' });
+            } catch (e) {}
+          }
+        }
+      }
+    }, 2500);
+  }
+
   _startHeartbeat() {
     if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
     this.heartbeatTimer = setInterval(() => {
@@ -366,9 +371,6 @@ class SyncEngine {
     }, 2000);
   }
 
-  /**
-   * Periodic ping for latency display
-   */
   _startPing() {
     if (this.pingTimer) clearInterval(this.pingTimer);
     this.pingTimer = setInterval(() => {
@@ -384,6 +386,45 @@ class SyncEngine {
     }, 4000);
   }
 
+  /**
+   * Screen WakeLock: Keeps screen & network radio awake on Android
+   */
+  async _acquireWakeLock() {
+    if ('wakeLock' in navigator) {
+      try {
+        this.wakeLock = await navigator.wakeLock.request('screen');
+        console.log('[Sync] Screen WakeLock acquired (prevents sleep & disconnect)');
+      } catch (err) {
+        console.log('[Sync] WakeLock not allowed:', err);
+      }
+    }
+  }
+
+  /**
+   * When user returns to tab (e.g. after sending WhatsApp link), check & re-establish
+   */
+  _setupVisibilityListener() {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        console.log('[Sync] Tab returned to foreground');
+        this._acquireWakeLock();
+
+        // Reconnect signaling if disconnected
+        if (this.peer && this.peer.disconnected && !this.peer.destroyed) {
+          try {
+            this.peer.reconnect();
+          } catch (e) {}
+        }
+
+        // If client lost host connection, retry joining
+        if (!this.isHost && this.roomId && this.connections.length === 0) {
+          console.log('[Sync] Retrying connection to host after foreground return...');
+          this._connectToHostWithRetry(this.roomId);
+        }
+      }
+    });
+  }
+
   _updateStatus(status, detail = '') {
     if (this.onStatusChange) this.onStatusChange(status, detail);
   }
@@ -397,6 +438,12 @@ class SyncEngine {
   destroy() {
     if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
     if (this.pingTimer) clearInterval(this.pingTimer);
+    if (this.keepAliveTimer) clearInterval(this.keepAliveTimer);
+    if (this.connectTimeoutTimer) clearTimeout(this.connectTimeoutTimer);
+    if (this.wakeLock) {
+      this.wakeLock.release().catch(() => {});
+      this.wakeLock = null;
+    }
     if (this.peer) this.peer.destroy();
     this.connections = [];
     this.peerReady = false;

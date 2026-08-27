@@ -53,6 +53,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const stripRoomCode = document.getElementById('strip-room-code');
   const stripBtnCopy = document.getElementById('strip-btn-copy');
   const stripBtnCreate = document.getElementById('strip-btn-create');
+  const stripBtnReconnect = document.getElementById('strip-btn-reconnect');
   const stripBtnPickFile = document.getElementById('strip-btn-pick-file');
   const btnPromptPick = document.getElementById('btn-prompt-pick');
 
@@ -274,6 +275,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     stripBtnCopy.addEventListener('click', () => btnCopyLink.click());
   }
 
+  if (stripBtnReconnect) {
+    stripBtnReconnect.addEventListener('click', () => {
+      if (sync.roomId) {
+        showToast(`Reconnecting to ${sync.roomId}...`, true, 3000);
+        if (sync.isHost) {
+          sync.init(sync.roomId);
+        } else {
+          sync.joinRoom(sync.roomId);
+        }
+      }
+    });
+  }
+
   // Copy Shareable Invite Link
   if (btnCopyLink) {
     btnCopyLink.addEventListener('click', () => {
@@ -335,24 +349,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (status === 'connected') {
       statusDot.className = 'status-dot connected';
       statusText.innerText = 'Connected with Friend';
+      if (stripBtnReconnect) stripBtnReconnect.style.display = 'none';
       if (modalPeerStatus) {
         modalPeerStatus.innerHTML = '<span style="color: var(--accent-success); font-weight: bold;">🎉 Friend is in the room! Both ready to watch.</span>';
       }
     } else if (status === 'connecting') {
       statusDot.className = 'status-dot connecting';
       statusText.innerText = detail || 'Connecting...';
+      if (stripBtnReconnect) stripBtnReconnect.style.display = 'none';
       if (modalPeerStatus) {
-        modalPeerStatus.innerHTML = '<span style="color: var(--accent-warning);">⏳ Connecting to peer...</span>';
+        modalPeerStatus.innerHTML = `<span style="color: var(--accent-warning);">⏳ ${detail || 'Connecting to peer...'}</span>`;
       }
     } else if (status === 'ready') {
       statusDot.className = 'status-dot connecting';
       statusText.innerText = sync.isHost ? 'Waiting for Friend...' : 'Room Ready';
+      if (stripBtnReconnect) stripBtnReconnect.style.display = 'none';
       if (modalPeerStatus) {
         modalPeerStatus.innerHTML = '<span style="color: var(--accent-warning);">⏳ Waiting for your friend to join... (Share link above)</span>';
       }
     } else {
       statusDot.className = 'status-dot';
       statusText.innerText = detail || 'Disconnected';
+      if (stripBtnReconnect && sync.roomId && !sync.isHost) {
+        stripBtnReconnect.style.display = 'inline-flex';
+      }
       if (modalPeerStatus) {
         modalPeerStatus.innerHTML = '<span style="color: var(--text-muted);">Not connected to anyone yet.</span>';
       }
