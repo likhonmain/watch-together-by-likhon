@@ -8,8 +8,8 @@
   <title>Watch Together by Likhon</title>
   
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='25' fill='%236366f1'/><polygon points='38,28 72,50 38,72' fill='white'/></svg>">
-  <link rel="manifest" href="manifest.json?v=3.5">
-  <link rel="stylesheet" href="css/style.css?v=3.5">
+  <link rel="manifest" href="manifest.json?v=3.6">
+  <link rel="stylesheet" href="css/style.css?v=3.6">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -121,17 +121,8 @@
           </div>
         </div>
 
-        <!-- Big Center "Ready to Play" Card -->
-        <div class="center-play-overlay hidden" id="center-play-overlay">
-          <button class="giant-play-btn" id="btn-giant-play" title="Start Watching">
-            <svg viewBox="0 0 24 24" fill="currentColor">
-              <polygon points="6 3 20 12 6 21 6 3"/>
-            </svg>
-          </button>
-          <div class="center-play-info">
-            <div class="center-movie-title" id="center-movie-title">Movie Ready</div>
-            <div class="center-movie-hint" id="center-movie-hint">Tap Play to Start Watching with Friend</div>
-          </div>
+        <!-- Big Center "Ready to Play" Card (Permanently disabled so video is clean) -->
+        <div class="center-play-overlay hidden" id="center-play-overlay" style="display: none !important; pointer-events: none !important;">
         </div>
 
         <!-- Big Center Gesture Indicator -->
@@ -383,6 +374,7 @@
           <div class="mp-tabs-nav">
             <button class="mp-tab-btn active" data-tab="mp-tab-chat">💬 Live Chat</button>
             <button class="mp-tab-btn" data-tab="mp-tab-audio">🎛️ Audio & Subtitles</button>
+            <button class="mp-tab-btn" data-tab="mp-tab-users">👥 Users (<span id="mp-user-count">1</span>)</button>
           </div>
 
           <!-- Tab 1: Live Chat -->
@@ -436,6 +428,33 @@
               </div>
             </div>
           </div>
+
+          <!-- Tab 3: Room Users & Profile -->
+          <div class="mp-tab-pane" id="mp-tab-users">
+            <!-- Edit Username Card -->
+            <div class="mp-profile-card">
+              <div class="mp-profile-head">
+                <span>Your Display Name</span>
+                <span class="user-role-pill" id="my-role-badge">Host</span>
+              </div>
+              <div class="mp-user-input-group">
+                <input type="text" class="text-input" id="input-username-mobile" placeholder="Your Display Name" maxlength="20" autocomplete="off">
+                <button class="btn btn-primary" id="btn-save-username-mobile">💾 Save</button>
+              </div>
+              <div class="mp-user-hint">Friends in room & chat will see this name</div>
+            </div>
+
+            <!-- Room Members Section -->
+            <div class="mp-members-card">
+              <div class="mp-members-head">
+                <span>Users in Room</span>
+                <span class="mp-members-pill" id="mp-members-count">1 Online</span>
+              </div>
+              <div class="mp-members-list" id="mp-members-list">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Hidden compatibility elements for app.js references -->
@@ -473,6 +492,27 @@
         <button class="btn btn-start-watching btn-sm" id="desktop-sidebar-btn-start" style="width: 100%; margin-top: 0.6rem; min-height: 38px;" disabled>
           ▶️ Start Watching Together
         </button>
+
+        <!-- Desktop Username Edit & Members -->
+        <div class="desktop-user-box" style="margin-top: 0.75rem; padding-top: 0.65rem; border-top: 1px solid var(--border-color);">
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; margin-bottom: 0.35rem;">
+            <span style="color: var(--text-secondary); font-weight: 600;">Your Display Name</span>
+            <span class="user-role-pill" id="desktop-role-badge">Host</span>
+          </div>
+          <div style="display: flex; gap: 0.35rem;">
+            <input type="text" class="text-input text-input-sm" id="desktop-username-input" placeholder="Display Name" maxlength="20" autocomplete="off" style="flex: 1; font-size: 0.82rem;">
+            <button class="btn btn-primary btn-sm" id="desktop-username-save" style="font-weight: 700; padding: 0.35rem 0.75rem;">Save</button>
+          </div>
+          <div style="margin-top: 0.6rem;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 0.35rem; color: var(--text-secondary); font-weight: 600;">
+              <span>Users in Room</span>
+              <span id="desktop-members-count">1 Online</span>
+            </div>
+            <div class="desktop-members-list" id="desktop-members-list">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Card 2: Movie File & Subtitles -->
@@ -523,13 +563,13 @@
   </main>
 
   <!-- Scripts (Cache Busted) -->
-  <script src="js/peerjs.min.js?v=3.5"></script>
-  <script src="js/srt-parser.js?v=3.5"></script>
-  <script src="js/sync.js?v=3.5"></script>
-  <script src="js/voice.js?v=3.5"></script>
-  <script src="js/chat.js?v=3.5"></script>
-  <script src="js/player.js?v=3.5"></script>
-  <script src="js/app.js?v=3.5"></script>
+  <script src="js/peerjs.min.js?v=3.6"></script>
+  <script src="js/srt-parser.js?v=3.6"></script>
+  <script src="js/sync.js?v=3.6"></script>
+  <script src="js/voice.js?v=3.6"></script>
+  <script src="js/chat.js?v=3.6"></script>
+  <script src="js/player.js?v=3.6"></script>
+  <script src="js/app.js?v=3.6"></script>
 
   <!-- PWA Service Worker Registration -->
   <script>

@@ -23,9 +23,9 @@ class ChatManager {
   }
 
   init() {
-    // Generate simple nickname if not set
-    const savedName = localStorage.getItem('wt_nickname');
-    this.nickname = savedName || 'User_' + Math.floor(1000 + Math.random() * 9000);
+    // Generate or load nickname
+    const savedName = localStorage.getItem('wt_username') || localStorage.getItem('wt_nickname');
+    this.nickname = (this.sync && this.sync.getUsername) ? this.sync.getUsername() : (savedName || 'User_' + Math.floor(100 + Math.random() * 900));
 
     if (this.sendBtn && this.chatInput) {
       this.sendBtn.addEventListener('click', () => this.sendMessage());

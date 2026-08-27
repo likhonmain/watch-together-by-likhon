@@ -179,20 +179,18 @@ class VideoPlayer {
   }
 
   _showCenterPlayCard(title = '') {
-    if (!this.centerPlayOverlay) return;
-    const titleEl = document.getElementById('center-movie-title');
-    const durStr = this.video.duration ? ` (${this._formatTime(this.video.duration)})` : '';
-    if (titleEl) {
-      titleEl.innerText = title ? `▶ ${title}${durStr}` : 'Start Watching';
+    // Disabled: never show center start watching box over the movie
+    if (this.centerPlayOverlay) {
+      this.centerPlayOverlay.classList.add('hidden');
+      this.centerPlayOverlay.style.display = 'none';
     }
-    this.centerPlayOverlay.classList.remove('hidden');
-    this.centerPlayOverlay.style.display = 'flex';
   }
 
   _hideCenterPlayCard() {
-    if (!this.centerPlayOverlay) return;
-    this.centerPlayOverlay.classList.add('hidden');
-    this.centerPlayOverlay.style.display = 'none';
+    if (this.centerPlayOverlay) {
+      this.centerPlayOverlay.classList.add('hidden');
+      this.centerPlayOverlay.style.display = 'none';
+    }
   }
 
   /* ------------------------------------------------------------------------

@@ -1419,6 +1419,131 @@ video#main-video {
     display: flex;
   }
 
+  /* Users Tab & Room Members Styles */
+  .mp-profile-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 0.65rem 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .mp-profile-head,
+  .mp-members-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+
+  .mp-user-input-group {
+    display: flex;
+    gap: 0.4rem;
+  }
+
+  .mp-user-input-group .text-input {
+    flex: 1;
+    min-height: 38px;
+    font-size: 0.85rem;
+  }
+
+  .mp-user-hint {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-top: 0.35rem;
+  }
+
+  .user-role-pill {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 999px;
+    letter-spacing: 0.05em;
+  }
+
+  .user-role-pill.host {
+    background: rgba(16, 185, 129, 0.18);
+    color: var(--accent-success);
+    border: 1px solid rgba(16, 185, 129, 0.4);
+  }
+
+  .user-role-pill.guest {
+    background: rgba(99, 102, 241, 0.18);
+    color: var(--accent-secondary);
+    border: 1px solid rgba(99, 102, 241, 0.4);
+  }
+
+  .mp-members-pill {
+    font-size: 0.7rem;
+    color: var(--accent-success);
+    font-weight: 600;
+  }
+
+  .mp-members-list,
+  .desktop-members-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .member-item-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.45rem 0.6rem;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: var(--radius-sm);
+    font-size: 0.82rem;
+  }
+
+  .member-info-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .member-avatar-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--accent-gradient);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: white;
+  }
+
+  .member-name-label {
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .member-self-tag {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    font-style: italic;
+    margin-left: 0.25rem;
+  }
+
+  .member-status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent-success);
+    box-shadow: 0 0 6px var(--accent-success);
+    display: inline-block;
+  }
+
+  .mp-start-card.in-playback {
+    display: none !important;
+  }
+
   /* In-App Chat Stream */
   .mp-chat-stream {
     flex: 1;
@@ -1640,26 +1765,9 @@ video#main-video {
    Big Center "Ready to Play" Card Overlay
    -------------------------------------------------------------------------- */
 .center-play-overlay {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: rgba(18, 20, 29, 0.92);
-  backdrop-filter: blur(20px);
-  border: 1px solid var(--border-glow);
-  border-radius: var(--radius-lg);
-  padding: 1.5rem 2rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  cursor: pointer;
-  z-index: 22;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(99, 102, 241, 0.3);
-  transition: all var(--transition-normal);
-  text-align: center;
-  max-width: 85%;
+  display: none !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
 }
 
 .center-play-overlay:hover {
@@ -1748,6 +1856,92 @@ video#main-video {
   font-size: 0.82rem;
   color: var(--text-secondary);
   max-width: 320px;
+}
+
+/* --------------------------------------------------------------------------
+   Room Members & User Profile (Shared by Desktop & Mobile)
+   -------------------------------------------------------------------------- */
+.user-role-pill {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 999px;
+  letter-spacing: 0.05em;
+  display: inline-flex;
+  align-items: center;
+}
+
+.user-role-pill.host {
+  background: rgba(16, 185, 129, 0.18);
+  color: var(--accent-success);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.user-role-pill.guest {
+  background: rgba(99, 102, 241, 0.18);
+  color: var(--accent-secondary);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+}
+
+.mp-members-list,
+.desktop-members-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.member-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.45rem 0.6rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+}
+
+.member-info-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.member-avatar-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent-gradient);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: white;
+  flex-shrink: 0;
+}
+
+.member-name-label {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.member-self-tag {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-left: 0.25rem;
+}
+
+.member-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent-success);
+  box-shadow: 0 0 6px var(--accent-success);
+  display: inline-block;
+  flex-shrink: 0;
 }
 
 /* --------------------------------------------------------------------------

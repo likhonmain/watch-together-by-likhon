@@ -21,6 +21,9 @@ class SyncEngine {
     this.wakeLock = null;
     this.retryAttempts = 0;
 
+    this.localUsername = localStorage.getItem('wt_username') || localStorage.getItem('wt_nickname') || ('User_' + Math.floor(100 + Math.random() * 900));
+    this.peersMap = {}; // peerId -> { isSelf, peerId, username, role, isHost, status, joinedAt }
+
     // Callbacks
     this.onStatusChange = null;
     this.onPeerConnected = null;
@@ -30,8 +33,48 @@ class SyncEngine {
     this.onFileInfoReceived = null;
     this.onPingUpdated = null;
     this.onPeerCountChanged = null;
+    this.onPeerListChanged = null;
 
     this._setupVisibilityListener();
+  }
+
+  getUsername() {
+    return this.localUsername;
+  }
+
+  setUsername(name) {
+    if (!name) return;
+    this.localUsername = name.trim();
+    localStorage.setItem('wt_username', this.localUsername);
+    localStorage.setItem('wt_nickname', this.localUsername);
+
+    this.broadcast({
+      type: 'username_update',
+      username: this.localUsername,
+      sender: this.localPeerId
+    });
+
+    if (this.onPeerListChanged) {
+      this.onPeerListChanged(this.getPeerList());
+    }
+  }
+
+  getPeerList() {
+    const list = [
+      {
+        isSelf: true,
+        peerId: this.localPeerId || 'local',
+        username: this.localUsername,
+        role: this.isHost ? 'Host' : 'Guest',
+        isHost: this.isHost,
+        status: 'online',
+        joinedAt: Date.now()
+      }
+    ];
+    for (const pid in this.peersMap) {
+      list.push(this.peersMap[pid]);
+    }
+    return list;
   }
 
   /**
@@ -219,12 +262,13 @@ class SyncEngine {
         this.onPeerConnected(conn.peer);
       }
 
-      // Initial Handshake
+      // Initial Handshake with display name
       try {
         conn.send({
           type: 'handshake',
-          role: this.isHost ? 'host' : 'client',
+          role: this.isHost ? 'host' : 'guest',
           sender: this.localPeerId,
+          username: this.getUsername(),
           timestamp: Date.now()
         });
       } catch (e) {}
@@ -243,7 +287,12 @@ class SyncEngine {
     conn.on('close', () => {
       console.log(`[Sync] DataChannel closed with peer: ${conn.peer}`);
       this.connections = this.connections.filter(c => c.peer !== conn.peer);
+      delete this.peersMap[conn.peer];
       this._notifyPeerCount();
+
+      if (this.onPeerListChanged) {
+        this.onPeerListChanged(this.getPeerList());
+      }
 
       if (this.onPeerDisconnected) {
         this.onPeerDisconnected(conn.peer);
@@ -269,8 +318,60 @@ class SyncEngine {
 
     switch (data.type) {
       case 'handshake':
-        console.log(`[Sync] Handshake confirmed from ${conn.peer}`);
+        console.log(`[Sync] Handshake received from ${conn.peer} (${data.username})`);
+        this.peersMap[conn.peer] = {
+          isSelf: false,
+          peerId: conn.peer,
+          username: data.username || 'Friend',
+          role: data.role === 'host' ? 'Host' : 'Guest',
+          isHost: data.role === 'host',
+          status: 'online',
+          joinedAt: data.timestamp || Date.now()
+        };
+        // Reply with handshake_ack so both sides know the other's username
+        try {
+          conn.send({
+            type: 'handshake_ack',
+            role: this.isHost ? 'host' : 'guest',
+            sender: this.localPeerId,
+            username: this.getUsername(),
+            timestamp: Date.now()
+          });
+        } catch (e) {}
         this._updateStatus('connected', 'Connected with friend!');
+        if (this.onPeerListChanged) this.onPeerListChanged(this.getPeerList());
+        break;
+
+      case 'handshake_ack':
+        console.log(`[Sync] Handshake ACK received from ${conn.peer} (${data.username})`);
+        this.peersMap[conn.peer] = {
+          isSelf: false,
+          peerId: conn.peer,
+          username: data.username || 'Friend',
+          role: data.role === 'host' ? 'Host' : 'Guest',
+          isHost: data.role === 'host',
+          status: 'online',
+          joinedAt: data.timestamp || Date.now()
+        };
+        if (this.onPeerListChanged) this.onPeerListChanged(this.getPeerList());
+        break;
+
+      case 'username_update':
+        if (this.peersMap[conn.peer]) {
+          const oldName = this.peersMap[conn.peer].username;
+          this.peersMap[conn.peer].username = data.username || 'Friend';
+          if (this.onPeerListChanged) this.onPeerListChanged(this.getPeerList());
+          if (window.showToast) {
+            window.showToast(`👤 ${oldName} is now "${data.username}"`, true, 3000);
+          }
+          if (this.onChatReceived) {
+            this.onChatReceived({
+              text: `👤 ${oldName} changed name to "${data.username}"`,
+              sender: 'System',
+              timestamp: Date.now()
+            });
+          }
+        }
         break;
 
       case 'keepalive':

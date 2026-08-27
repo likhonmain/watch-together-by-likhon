@@ -806,5 +806,120 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   };
 
+  /* ------------------------------------------------------------------------
+     5. User Profile & Room Members Management
+     ------------------------------------------------------------------------ */
+  const escapeHtml = (str) => {
+    const p = document.createElement('p');
+    p.textContent = str || '';
+    return p.innerHTML;
+  };
+
+  const inputMobileUser = document.getElementById('input-username-mobile');
+  const btnSaveMobileUser = document.getElementById('btn-save-username-mobile');
+  const inputDesktopUser = document.getElementById('desktop-username-input');
+  const btnSaveDesktopUser = document.getElementById('desktop-username-save');
+
+  function initUserProfile() {
+    const currentName = sync.getUsername();
+    if (inputMobileUser) inputMobileUser.value = currentName;
+    if (inputDesktopUser) inputDesktopUser.value = currentName;
+
+    const handleSave = (name) => {
+      const trimmed = (name || '').trim();
+      if (!trimmed) {
+        showToast('Please enter a valid display name.', false);
+        return;
+      }
+      sync.setUsername(trimmed);
+      chat.setNickname(trimmed);
+      if (inputMobileUser) inputMobileUser.value = trimmed;
+      if (inputDesktopUser) inputDesktopUser.value = trimmed;
+      renderUserList(sync.getPeerList());
+      showToast(`✅ Name updated to "${trimmed}"`, true, 2500);
+    };
+
+    if (btnSaveMobileUser && inputMobileUser) {
+      btnSaveMobileUser.addEventListener('click', () => handleSave(inputMobileUser.value));
+      inputMobileUser.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') handleSave(inputMobileUser.value);
+      });
+    }
+
+    if (btnSaveDesktopUser && inputDesktopUser) {
+      btnSaveDesktopUser.addEventListener('click', () => handleSave(inputDesktopUser.value));
+      inputDesktopUser.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') handleSave(inputDesktopUser.value);
+      });
+    }
+  }
+
+  function renderUserList(members) {
+    if (!members) return;
+    const listMobile = document.getElementById('mp-members-list');
+    const listDesktop = document.getElementById('desktop-members-list');
+    const countMobile = document.getElementById('mp-members-count');
+    const countDesktop = document.getElementById('desktop-members-count');
+    const tabBadge = document.getElementById('mp-user-count');
+    const myRoleBadge = document.getElementById('my-role-badge');
+    const dtRoleBadge = document.getElementById('desktop-role-badge');
+
+    const total = members.length;
+    if (countMobile) countMobile.innerText = `${total} Online`;
+    if (countDesktop) countDesktop.innerText = `${total} Online`;
+    if (tabBadge) tabBadge.innerText = total;
+
+    const myRole = sync.isHost ? 'Host' : 'Guest';
+    const myRoleClass = sync.isHost ? 'host' : 'guest';
+    if (myRoleBadge) {
+      myRoleBadge.innerText = myRole;
+      myRoleBadge.className = `user-role-pill ${myRoleClass}`;
+    }
+    if (dtRoleBadge) {
+      dtRoleBadge.innerText = myRole;
+      dtRoleBadge.className = `user-role-pill ${myRoleClass}`;
+    }
+
+    const html = members.map(m => {
+      const initial = (m.username || 'U').charAt(0).toUpperCase();
+      const roleClass = m.isHost ? 'host' : 'guest';
+      const roleName = m.isHost ? 'Host' : 'Guest';
+      const selfTag = m.isSelf ? '<span class="member-self-tag">(You)</span>' : '';
+      return `
+        <div class="member-item-row">
+          <div class="member-info-left">
+            <div class="member-avatar-icon">${initial}</div>
+            <div>
+              <span class="member-name-label">${escapeHtml(m.username)}</span>
+              ${selfTag}
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.4rem;">
+            <span class="user-role-pill ${roleClass}">${roleName}</span>
+            <span class="member-status-dot" title="Online"></span>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    if (listMobile) listMobile.innerHTML = html;
+    if (listDesktop) listDesktop.innerHTML = html;
+  }
+
+  sync.onPeerListChanged = (members) => {
+    renderUserList(members);
+  };
+
+  initUserProfile();
+  renderUserList(sync.getPeerList());
+
+  // Hide start watching banner during active movie playback
+  const mpStartBanner = document.getElementById('mp-start-banner');
+  if (mpStartBanner && player.video) {
+    player.video.addEventListener('play', () => {
+      mpStartBanner.classList.add('in-playback');
+    });
+  }
+
   console.log('[App] Watch Together by Likhon ready.');
 });
