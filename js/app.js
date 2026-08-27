@@ -134,6 +134,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       fileInfoBadge.classList.add('active');
     }
 
+    const mpTitle = document.getElementById('mp-movie-title');
+    if (mpTitle) {
+      const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+      mpTitle.innerText = `🎬 ${file.name} (${sizeMb} MB)`;
+    }
+
     showToast(`Movie loaded: ${file.name}`, true, 3000);
     updateStartButtonState();
   }
@@ -146,9 +152,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       player.loadStreamUrl(url);
       mediaLoaded = true;
 
+      const streamTitle = url.split('/').pop().split('?')[0] || url;
       if (fileInfoBadge && fileNameText) {
-        fileNameText.innerText = `✅ Stream: ${url.split('/').pop().split('?')[0] || url}`;
+        fileNameText.innerText = `✅ Stream: ${streamTitle}`;
         fileInfoBadge.classList.add('active');
+      }
+      const mpTitle = document.getElementById('mp-movie-title');
+      if (mpTitle) {
+        mpTitle.innerText = `🎬 ${streamTitle}`;
       }
 
       showToast('Stream URL loaded', true, 3000);
@@ -251,6 +262,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (stripBtnCreate) {
       stripBtnCreate.innerText = 'New Room';
     }
+    const mpRoomLabel = document.getElementById('mp-room-label');
+    const mpInfoCode = document.getElementById('mp-info-code');
+    if (mpRoomLabel) mpRoomLabel.innerText = `Room: ${roomId}`;
+    if (mpInfoCode) mpInfoCode.innerText = roomId;
+
     const newUrl = `${window.location.protocol}//${window.location.host}${window.location.pathname}?room=${roomId}`;
     window.history.replaceState({ path: newUrl }, '', newUrl);
   }
@@ -344,40 +360,187 @@ document.addEventListener('DOMContentLoaded', async () => {
      3. Sync Status & Peer Join / Leave Handlers
      ------------------------------------------------------------------------ */
   sync.onStatusChange = (status, detail) => {
-    if (!statusDot || !statusText) return;
+    const mpStatusDot = document.getElementById('mp-status-dot');
+    const mpStatusText = document.getElementById('mp-status-text');
+    const mpInfoStatus = document.getElementById('mp-info-status');
+    const mpBtnReconnect = document.getElementById('mp-btn-reconnect');
 
     if (status === 'connected') {
-      statusDot.className = 'status-dot connected';
-      statusText.innerText = 'Connected with Friend';
+      if (statusDot) statusDot.className = 'status-dot connected';
+      if (statusText) statusText.innerText = 'Connected with Friend';
+      if (mpStatusDot) mpStatusDot.className = 'status-dot connected';
+      if (mpStatusText) mpStatusText.innerText = 'Connected with Friend';
+      if (mpInfoStatus) mpInfoStatus.innerHTML = '<span style="color: var(--accent-success);">🟢 Connected with Friend</span>';
       if (stripBtnReconnect) stripBtnReconnect.style.display = 'none';
+      if (mpBtnReconnect) mpBtnReconnect.style.display = 'none';
       if (modalPeerStatus) {
         modalPeerStatus.innerHTML = '<span style="color: var(--accent-success); font-weight: bold;">🎉 Friend is in the room! Both ready to watch.</span>';
       }
     } else if (status === 'connecting') {
-      statusDot.className = 'status-dot connecting';
-      statusText.innerText = detail || 'Connecting...';
+      if (statusDot) statusDot.className = 'status-dot connecting';
+      if (statusText) statusText.innerText = detail || 'Connecting...';
+      if (mpStatusDot) mpStatusDot.className = 'status-dot connecting';
+      if (mpStatusText) mpStatusText.innerText = detail || 'Connecting...';
+      if (mpInfoStatus) mpInfoStatus.innerHTML = `<span style="color: var(--accent-warning);">⏳ ${detail || 'Connecting...'}</span>`;
       if (stripBtnReconnect) stripBtnReconnect.style.display = 'none';
+      if (mpBtnReconnect) mpBtnReconnect.style.display = 'none';
       if (modalPeerStatus) {
         modalPeerStatus.innerHTML = `<span style="color: var(--accent-warning);">⏳ ${detail || 'Connecting to peer...'}</span>`;
       }
     } else if (status === 'ready') {
-      statusDot.className = 'status-dot connecting';
-      statusText.innerText = sync.isHost ? 'Waiting for Friend...' : 'Room Ready';
+      if (statusDot) statusDot.className = 'status-dot connecting';
+      const msg = sync.isHost ? 'Waiting for Friend...' : 'Room Ready';
+      if (statusText) statusText.innerText = msg;
+      if (mpStatusDot) mpStatusDot.className = 'status-dot connecting';
+      if (mpStatusText) mpStatusText.innerText = msg;
+      if (mpInfoStatus) mpInfoStatus.innerHTML = `<span style="color: var(--accent-warning);">⏳ ${msg}</span>`;
       if (stripBtnReconnect) stripBtnReconnect.style.display = 'none';
+      if (mpBtnReconnect) mpBtnReconnect.style.display = 'none';
       if (modalPeerStatus) {
         modalPeerStatus.innerHTML = '<span style="color: var(--accent-warning);">⏳ Waiting for your friend to join... (Share link above)</span>';
       }
     } else {
-      statusDot.className = 'status-dot';
-      statusText.innerText = detail || 'Disconnected';
+      if (statusDot) statusDot.className = 'status-dot';
+      if (statusText) statusText.innerText = detail || 'Disconnected';
+      if (mpStatusDot) mpStatusDot.className = 'status-dot';
+      if (mpStatusText) mpStatusText.innerText = detail || 'Disconnected';
+      if (mpInfoStatus) mpInfoStatus.innerHTML = `<span style="color: var(--accent-danger);">❌ Disconnected</span>`;
       if (stripBtnReconnect && sync.roomId && !sync.isHost) {
         stripBtnReconnect.style.display = 'inline-flex';
+      }
+      if (mpBtnReconnect && sync.roomId && !sync.isHost) {
+        mpBtnReconnect.style.display = 'block';
       }
       if (modalPeerStatus) {
         modalPeerStatus.innerHTML = '<span style="color: var(--text-muted);">Not connected to anyone yet.</span>';
       }
     }
   };
+
+  /* ------------------------------------------------------------------------
+     4. Mobile Portrait Panel Controls Wiring
+     ------------------------------------------------------------------------ */
+  function setupMobilePanel() {
+    // Tab switching
+    document.querySelectorAll('.mp-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.mp-tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.mp-tab-pane').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        const targetId = btn.getAttribute('data-tab');
+        const targetPane = document.getElementById(targetId);
+        if (targetPane) targetPane.classList.add('active');
+      });
+    });
+
+    // Pick Movie Button
+    const mpBtnPick = document.getElementById('mp-btn-pick');
+    if (mpBtnPick && fileInput) {
+      mpBtnPick.addEventListener('click', () => fileInput.click());
+    }
+
+    // Invite Friend (Copy Link)
+    const mpBtnCopy = document.getElementById('mp-btn-copy-link');
+    if (mpBtnCopy && btnCopyLink) {
+      mpBtnCopy.addEventListener('click', () => btnCopyLink.click());
+    }
+
+    // Room Button
+    const mpBtnRoom = document.getElementById('mp-btn-room');
+    if (mpBtnRoom) {
+      mpBtnRoom.addEventListener('click', () => {
+        if (!sync.roomId) {
+          if (btnCreateRoom) btnCreateRoom.click();
+        } else {
+          if (btnCopyLink) btnCopyLink.click();
+        }
+      });
+    }
+
+    // Voice Call Button
+    const mpBtnVoice = document.getElementById('mp-btn-voice');
+    const mpVoiceLabel = document.getElementById('mp-voice-label');
+    if (mpBtnVoice && btnVoiceToggle) {
+      mpBtnVoice.addEventListener('click', () => {
+        btnVoiceToggle.click();
+        if (mpVoiceLabel) {
+          mpVoiceLabel.innerText = voice.isActive ? 'Leave Voice' : 'Voice Call';
+        }
+      });
+    }
+
+    // Cinema Fullscreen Button
+    const mpBtnFullscreen = document.getElementById('mp-btn-fullscreen');
+    if (mpBtnFullscreen) {
+      mpBtnFullscreen.addEventListener('click', () => {
+        player.toggleFullscreen();
+      });
+    }
+
+    // Speed Pills
+    document.querySelectorAll('.mp-pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        const speed = parseFloat(pill.getAttribute('data-speed'));
+        player.setPlaybackSpeed(speed);
+      });
+    });
+
+    // Subtitles
+    const mpSubToggle = document.getElementById('mp-sub-toggle');
+    if (mpSubToggle) {
+      mpSubToggle.addEventListener('click', () => {
+        subtitles.enabled = !subtitles.enabled;
+        mpSubToggle.innerText = subtitles.enabled ? 'Subtitles: ON' : 'Subtitles: OFF';
+        const mainToggle = document.getElementById('sub-toggle');
+        if (mainToggle) mainToggle.innerText = subtitles.enabled ? 'Subtitles: ON' : 'Subtitles: OFF';
+        const subDisplay = document.getElementById('subtitle-text');
+        if (!subtitles.enabled && subDisplay) subDisplay.innerText = '';
+      });
+    }
+
+    const mpSubFileInput = document.getElementById('mp-sub-file-input');
+    if (mpSubFileInput) {
+      mpSubFileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          subtitles.parse(ev.target.result);
+          showToast(`Subtitles loaded: ${file.name}`, true, 3000);
+        };
+        reader.readAsText(file);
+      });
+    }
+
+    const mpSubMinus = document.getElementById('mp-sub-minus');
+    const mpSubPlus = document.getElementById('mp-sub-plus');
+    const mpSubReset = document.getElementById('mp-sub-reset');
+    const mpOffsetDisplay = document.getElementById('mp-offset-display');
+    const mainOffsetDisplay = document.getElementById('sub-offset-display');
+
+    const updateOffsetUI = (offset) => {
+      const str = `${offset > 0 ? '+' : ''}${offset}ms`;
+      if (mpOffsetDisplay) mpOffsetDisplay.innerText = str;
+      if (mainOffsetDisplay) mainOffsetDisplay.innerText = str;
+    };
+
+    if (mpSubMinus) mpSubMinus.addEventListener('click', () => updateOffsetUI(subtitles.adjustOffset(-250)));
+    if (mpSubPlus) mpSubPlus.addEventListener('click', () => updateOffsetUI(subtitles.adjustOffset(250)));
+    if (mpSubReset) mpSubReset.addEventListener('click', () => updateOffsetUI(subtitles.resetOffset()));
+
+    // Create Room & Reconnect in Tab 3
+    const mpBtnCreate = document.getElementById('mp-btn-create-room');
+    if (mpBtnCreate && btnCreateRoom) {
+      mpBtnCreate.addEventListener('click', () => btnCreateRoom.click());
+    }
+
+    const mpBtnRecon = document.getElementById('mp-btn-reconnect');
+    if (mpBtnRecon && stripBtnReconnect) {
+      mpBtnRecon.addEventListener('click', () => stripBtnReconnect.click());
+    }
+  }
+
+  setupMobilePanel();
 
   sync.onPeerConnected = (peerId) => {
     console.log('[App] Peer connected:', peerId);

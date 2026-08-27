@@ -48,6 +48,28 @@ class ChatManager {
     if (this.sync) {
       this.sync.onChatReceived = (msg) => this.handleIncomingMessage(msg);
     }
+
+    // Connect mobile portrait chat input
+    const mpSendBtn = document.getElementById('mp-chat-send');
+    const mpInput = document.getElementById('mp-chat-input');
+    if (mpSendBtn && mpInput) {
+      const sendMobile = () => {
+        const text = mpInput.value.trim();
+        if (!text) return;
+        if (this.sync) this.sync.sendChat(text, this.nickname);
+        this.appendMessage({
+          text: text,
+          sender: this.nickname,
+          timestamp: Date.now(),
+          isMe: true
+        });
+        mpInput.value = '';
+      };
+      mpSendBtn.addEventListener('click', sendMobile);
+      mpInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') sendMobile();
+      });
+    }
   }
 
   setNickname(name) {
@@ -104,6 +126,12 @@ class ChatManager {
 
     this.messageContainer.appendChild(bubble);
     this.messageContainer.scrollTop = this.messageContainer.scrollHeight;
+
+    const mpStream = document.getElementById('mp-chat-stream');
+    if (mpStream) {
+      mpStream.appendChild(bubble.cloneNode(true));
+      mpStream.scrollTop = mpStream.scrollHeight;
+    }
   }
 
   toggleDrawer() {

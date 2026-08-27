@@ -957,13 +957,28 @@ video#main-video {
 /* --------------------------------------------------------------------------
    Mobile Adaptations
    -------------------------------------------------------------------------- */
+/* --------------------------------------------------------------------------
+   Desktop Default: Hide Mobile-Only Elements
+   -------------------------------------------------------------------------- */
+.mobile-portrait-panel {
+  display: none !important;
+}
+
+.mobile-center-controls {
+  display: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   Mobile Adaptations (Phones & Small Tablets)
+   -------------------------------------------------------------------------- */
 @media (max-width: 768px) {
+  /* Header */
   .app-header {
     padding: 0 0.75rem;
-    height: 52px;
+    height: 48px;
   }
   .app-header .connection-badge {
-    display: none; /* Handled cleanly by .room-strip right below */
+    display: none;
   }
   .brand-title {
     font-size: 0.95rem;
@@ -971,50 +986,416 @@ video#main-video {
   .brand-author {
     display: none;
   }
+
+  /* Hide the double top strip on mobile — integrated cleanly into panel */
   .room-strip {
-    padding: 0.4rem 0.75rem;
-    font-size: 0.75rem;
+    display: none !important;
   }
-  .center-play-overlay {
-    padding: 1.25rem 1.5rem;
-    max-width: 92%;
-  }
-  .giant-play-btn {
-    width: 64px;
-    height: 64px;
-  }
-  .giant-play-btn svg {
-    width: 28px;
-    height: 28px;
-  }
-  .center-movie-title {
-    font-size: 0.9rem;
-    max-width: 230px;
-  }
+
+  /* Main Workspace */
   .main-container {
-    height: calc(100vh - 52px - 38px);
+    height: calc(100vh - 48px);
     flex-direction: column;
+    overflow: hidden;
   }
-  .chat-drawer {
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
+
+  .player-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  /* Video Stage (Clean 16:9 ratio in portrait — no more giant black void!) */
+  .video-wrapper {
     width: 100%;
-    max-width: 320px;
-    box-shadow: -10px 0 30px rgba(0, 0, 0, 0.7);
+    aspect-ratio: 16 / 9;
+    max-height: 38vh;
+    flex-shrink: 0;
+    position: relative;
+    background: #000;
+  }
+
+  .video-wrapper video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  /* Subtitles in Mobile */
+  .subtitles-container {
+    bottom: 50px;
+    left: 2%;
+    right: 2%;
   }
   .subtitle-text {
-    font-size: 1.1rem;
+    font-size: 1rem;
+    padding: 3px 8px;
+  }
+
+  /* Controls Overlay on Mobile (Minimal bottom bar) */
+  .controls-overlay {
+    padding: 0.75rem 0.75rem 0.5rem;
+  }
+  .timeline-container {
+    height: 28px; /* Larger touch hitbox for thumbs */
+  }
+  .timeline-track {
+    height: 5px;
   }
   .volume-control {
-    display: none; /* Mobile has physical buttons */
+    display: none; /* Mobile uses physical buttons */
   }
   .time-display {
     font-size: 0.72rem;
   }
+  .ctrl-btn {
+    width: 36px;
+    height: 36px;
+    padding: 6px;
+  }
+
+  /* Mobile Center Controls (Big Touch Trio) */
+  .mobile-center-controls {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex !important;
+    align-items: center;
+    gap: 1.5rem;
+    z-index: 24;
+    pointer-events: auto;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+  }
+
+  .mobile-center-controls.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .mcc-btn {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.62rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    transition: transform 0.15s ease;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mcc-btn:active {
+    transform: scale(0.9);
+    background: rgba(99, 102, 241, 0.5);
+  }
+
+  .mcc-btn.mcc-play {
+    width: 66px;
+    height: 66px;
+    background: var(--accent-gradient);
+    border: none;
+    box-shadow: 0 0 25px rgba(99, 102, 241, 0.6);
+  }
+
+  /* ================================================================
+     Mobile Portrait Panel (The Interactive Hub Below Video)
+     ================================================================ */
+  .mobile-portrait-panel {
+    display: flex !important;
+    flex-direction: column;
+    flex: 1;
+    overflow-y: auto;
+    background: var(--bg-primary);
+    border-top: 1px solid var(--border-color);
+  }
+
+  /* Header inside panel */
+  .mp-header {
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .mp-title-group {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .mp-movie-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 2px;
+  }
+
+  .mp-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+
+  .mp-btn-action {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.35rem 0.65rem;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    white-space: nowrap;
+    min-height: 36px;
+  }
+
+  .mp-btn-action:active {
+    background: var(--accent-primary);
+    color: white;
+  }
+
+  /* Quick Buttons Bar */
+  .mp-quick-bar {
+    display: flex;
+    gap: 0.4rem;
+    padding: 0.6rem 0.75rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid var(--border-color);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .mp-quick-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mp-quick-btn {
+    flex: 1;
+    min-width: 80px;
+    min-height: 44px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: var(--radius-md);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mp-quick-btn:active {
+    background: rgba(99, 102, 241, 0.2);
+    border-color: var(--accent-primary);
+  }
+
+  .mp-quick-btn svg {
+    color: var(--accent-secondary);
+  }
+
+  /* Segmented Tab Navigation */
+  .mp-tabs-nav {
+    display: flex;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 4px 8px;
+    gap: 4px;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .mp-tab-btn {
+    flex: 1;
+    min-height: 38px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-fast);
+  }
+
+  .mp-tab-btn.active {
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+
+  /* Tab Panes */
+  .mp-tab-pane {
+    display: none;
+    flex-direction: column;
+    flex: 1;
+    padding: 0.75rem;
+    overflow-y: auto;
+  }
+
+  .mp-tab-pane.active {
+    display: flex;
+  }
+
+  /* In-App Chat Stream */
+  .mp-chat-stream {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+    min-height: 140px;
+    max-height: 250px;
+  }
+
+  .mp-chat-input-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    align-items: center;
+  }
+
+  .mp-chat-input-row input {
+    flex: 1;
+    min-height: 42px;
+    font-size: 0.85rem;
+  }
+
+  .mp-chat-input-row button {
+    min-height: 42px;
+    padding: 0 1rem;
+  }
+
+  /* Subtitles & Audio Controls */
+  .mp-section {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 0.85rem;
+  }
+
+  .mp-section-title {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.6rem;
+  }
+
+  .mp-speed-pills {
+    display: flex;
+    gap: 0.35rem;
+    overflow-x: auto;
+  }
+
+  .mp-pill {
+    flex: 1;
+    min-height: 38px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+  }
+
+  .mp-pill.active {
+    background: var(--accent-primary);
+    border-color: transparent;
+    color: white;
+  }
+
+  .mp-sync-offset-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    justify-content: space-between;
+  }
+
+  .mp-offset-badge {
+    font-family: monospace;
+    font-weight: 700;
+    color: var(--accent-secondary);
+    font-size: 0.85rem;
+    padding: 4px 8px;
+    background: rgba(6, 182, 212, 0.1);
+    border-radius: var(--radius-sm);
+  }
+
+  /* Room Info Card */
+  .mp-info-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .mp-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+  }
+
+  /* Desktop side drawer remains hidden on mobile portrait */
+  .chat-drawer {
+    display: none !important;
+  }
+
+  /* Setup Card */
   .setup-card {
     padding: 1.25rem;
+    max-width: 95%;
+  }
+
+  /* ================================================================
+     Fullscreen Cinema Override on Mobile
+     ================================================================ */
+  :fullscreen .mobile-portrait-panel,
+  :-webkit-full-screen .mobile-portrait-panel {
+    display: none !important;
+  }
+
+  :fullscreen .video-wrapper,
+  :-webkit-full-screen .video-wrapper {
+    max-height: 100vh !important;
+    height: 100vh !important;
+    width: 100vw !important;
+    aspect-ratio: unset !important;
+  }
+
+  :fullscreen .app-header,
+  :-webkit-full-screen .app-header {
+    display: none !important;
   }
 }
 

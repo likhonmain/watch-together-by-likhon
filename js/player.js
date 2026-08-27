@@ -45,6 +45,12 @@ class VideoPlayer {
     this.tapZoneLeft = document.getElementById('tap-zone-left');
     this.tapZoneRight = document.getElementById('tap-zone-right');
 
+    // Mobile Center Controls
+    this.mccContainer = document.getElementById('mobile-center-controls');
+    this.mccPlayPause = document.getElementById('mcc-play-pause');
+    this.mccSkipBack = document.getElementById('mcc-skip-back');
+    this.mccSkipForward = document.getElementById('mcc-skip-forward');
+
     // State
     this.isDraggingTimeline = false;
     this.hideControlsTimeout = null;
@@ -75,6 +81,26 @@ class VideoPlayer {
     if (this.centerPlayOverlay) {
       this.centerPlayOverlay.addEventListener('click', () => {
         this.togglePlay();
+      });
+    }
+
+    // Wire Mobile Center Controls
+    if (this.mccPlayPause) {
+      this.mccPlayPause.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.togglePlay();
+      });
+    }
+    if (this.mccSkipBack) {
+      this.mccSkipBack.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.seekDelta(-10);
+      });
+    }
+    if (this.mccSkipForward) {
+      this.mccSkipForward.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.seekDelta(10);
       });
     }
 
@@ -557,18 +583,18 @@ class VideoPlayer {
 
   _handleScreenTap() {
     if (this.video.paused) {
-      // If paused, always keep controls visible
       if (this.controlsOverlay) this.controlsOverlay.classList.remove('hidden');
+      if (this.mccContainer) this.mccContainer.classList.remove('hidden');
       return;
     }
-    // If playing, toggle controls
-    if (this.controlsOverlay) {
-      if (this.controlsOverlay.classList.contains('hidden')) {
-        this.controlsOverlay.classList.remove('hidden');
-        this._setupControlsAutoHide();
-      } else {
-        this.controlsOverlay.classList.add('hidden');
-      }
+    const isHidden = this.controlsOverlay && this.controlsOverlay.classList.contains('hidden');
+    if (isHidden) {
+      if (this.controlsOverlay) this.controlsOverlay.classList.remove('hidden');
+      if (this.mccContainer) this.mccContainer.classList.remove('hidden');
+      this._setupControlsAutoHide();
+    } else {
+      if (this.controlsOverlay) this.controlsOverlay.classList.add('hidden');
+      if (this.mccContainer) this.mccContainer.classList.add('hidden');
     }
   }
 
@@ -761,12 +787,21 @@ class VideoPlayer {
      UI State Helpers
      ------------------------------------------------------------------------ */
   _updatePlayButton(isPlaying) {
-    if (!this.playPauseBtn) return;
-    const playIcon = this.playPauseBtn.querySelector('.icon-play');
-    const pauseIcon = this.playPauseBtn.querySelector('.icon-pause');
-    if (playIcon && pauseIcon) {
-      playIcon.style.display = isPlaying ? 'none' : 'block';
-      pauseIcon.style.display = isPlaying ? 'block' : 'none';
+    if (this.playPauseBtn) {
+      const playIcon = this.playPauseBtn.querySelector('.icon-play');
+      const pauseIcon = this.playPauseBtn.querySelector('.icon-pause');
+      if (playIcon && pauseIcon) {
+        playIcon.style.display = isPlaying ? 'none' : 'block';
+        pauseIcon.style.display = isPlaying ? 'block' : 'none';
+      }
+    }
+    if (this.mccPlayPause) {
+      const playIcon = this.mccPlayPause.querySelector('.icon-play');
+      const pauseIcon = this.mccPlayPause.querySelector('.icon-pause');
+      if (playIcon && pauseIcon) {
+        playIcon.style.display = isPlaying ? 'none' : 'block';
+        pauseIcon.style.display = isPlaying ? 'block' : 'none';
+      }
     }
   }
 
@@ -784,6 +819,15 @@ class VideoPlayer {
         }
       });
     }
+    // Update mobile speed pills if present
+    document.querySelectorAll('.mp-pill').forEach(pill => {
+      const sp = parseFloat(pill.getAttribute('data-speed'));
+      if (sp === this.video.playbackRate) {
+        pill.classList.add('active');
+      } else {
+        pill.classList.remove('active');
+      }
+    });
   }
 
   _updateVolumeIcon() {
@@ -812,11 +856,13 @@ class VideoPlayer {
       this.hideControlsTimeout = setTimeout(() => {
         if (!this.isDraggingTimeline && !this._isAnyMenuOpen()) {
           if (this.controlsOverlay) this.controlsOverlay.classList.add('hidden');
+          if (this.mccContainer) this.mccContainer.classList.add('hidden');
           if (this.videoWrapper) this.videoWrapper.style.cursor = 'none';
         }
       }, 3500);
     } else {
       if (this.controlsOverlay) this.controlsOverlay.classList.remove('hidden');
+      if (this.mccContainer) this.mccContainer.classList.remove('hidden');
       if (this.videoWrapper) this.videoWrapper.style.cursor = 'default';
     }
   }
